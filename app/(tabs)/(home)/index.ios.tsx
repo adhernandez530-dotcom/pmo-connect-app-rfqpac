@@ -91,7 +91,7 @@ export default function HomeScreen() {
 
   const handleSettingsPress = () => {
     console.log('HomeScreen: User tapped settings icon');
-    // TODO: Navigate to settings screen
+    router.push('/settings');
   };
 
   const getInitials = (name: string) => {

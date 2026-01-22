@@ -16,6 +16,7 @@ import {
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 // Note: Error logging is auto-initialized via index.ts import
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -84,21 +85,33 @@ export default function RootLayout() {
         <ThemeProvider
           value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
         >
-          <WidgetProvider>
-            <GestureHandlerRootView>
-            <Stack>
-              {/* Main app with tabs */}
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              {/* Notifications screen */}
-              <Stack.Screen name="notifications" options={{ headerShown: false }} />
-              {/* Edit profile screen */}
-              <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-              {/* Onboarding screen */}
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            </Stack>
-            <SystemBars style={"auto"} />
-            </GestureHandlerRootView>
-          </WidgetProvider>
+          <AuthProvider>
+            <WidgetProvider>
+              <GestureHandlerRootView>
+              <Stack>
+                {/* Auth screens */}
+                <Stack.Screen name="auth" options={{ headerShown: false }} />
+                <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+                <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+                {/* Main app with tabs */}
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                {/* Notifications screen */}
+                <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                {/* Edit profile screen */}
+                <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+                {/* Settings screen */}
+                <Stack.Screen name="settings" options={{ headerShown: false }} />
+                {/* Privacy Policy screen */}
+                <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+                {/* Terms of Service screen */}
+                <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
+                {/* Onboarding screen */}
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              </Stack>
+              <SystemBars style={"auto"} />
+              </GestureHandlerRootView>
+            </WidgetProvider>
+          </AuthProvider>
         </ThemeProvider>
     </>
   );

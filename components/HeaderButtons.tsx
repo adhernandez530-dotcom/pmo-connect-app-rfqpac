@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Alert } from "react-native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useTheme } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
 export function HeaderRightButton() {
   const theme = useTheme();
@@ -18,10 +19,14 @@ export function HeaderRightButton() {
 
 export function HeaderLeftButton() {
   const theme = useTheme();
+  const router = useRouter();
 
   return (
     <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
+      onPress={() => {
+        console.log('HeaderLeftButton: Navigating to settings');
+        router.push('/settings');
+      }}
       style={styles.headerButtonContainer}
     >
       <IconSymbol ios_icon_name="gear" android_material_icon_name="settings" color={theme.colors.primary} />
