@@ -1,3 +1,4 @@
+
 import "react-native-reanimated";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
@@ -88,6 +89,12 @@ export default function RootLayout() {
             <Stack>
               {/* Main app with tabs */}
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              {/* Notifications screen */}
+              <Stack.Screen name="notifications" options={{ headerShown: false }} />
+              {/* Edit profile screen */}
+              <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+              {/* Onboarding screen */}
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             </Stack>
             <SystemBars style={"auto"} />
             </GestureHandlerRootView>

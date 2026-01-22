@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from "react";
-import { Stack } from "expo-router";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { useRouter } from "expo-router";
+import Constants from "expo-constants";
+
+const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
 function resolveImageSource(source: string | number | any): any {
   if (!source) return { uri: '' };
@@ -20,65 +23,67 @@ interface UserProfile {
   friendsCount: number;
 }
 
-interface Notification {
+interface Service {
   id: string;
-  type: string;
-  content: string;
-  read: boolean;
+  serviceName: string;
   createdAt: string;
 }
 
 export default function HomeScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notificationsExpanded, setNotificationsExpanded] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [selectedService, setSelectedService] = useState<string>('ALL');
+  const [servicesExpanded, setServicesExpanded] = useState(true);
 
   useEffect(() => {
-    console.log('HomeScreen: Loading user profile and notifications');
+    console.log('HomeScreen: Loading user profile and services');
     loadProfile();
-    loadNotifications();
+    loadServices();
   }, []);
 
   const loadProfile = async () => {
     console.log('HomeScreen: Fetching user profile');
-    // TODO: Backend Integration - GET /api/users/me to fetch current user profile
-    // Returns: { id, username, fullName, location, bio, avatarUrl }
-    // TODO: Backend Integration - GET /api/friends/count to get friends count
-    // Returns: { count: number }
-    
-    // Mock data for now
-    setProfile({
-      username: 'Al3xtacy',
-      fullName: 'Alexander Hernandez',
-      location: 'Queens, NY',
-      bio: 'A Project Manager by Day, A D.J by night, and a cook between both!',
-      friendsCount: 0,
-    });
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/users/me`);
+      const data = await response.json();
+      console.log('HomeScreen: Profile loaded successfully', data);
+      setProfile(data);
+    } catch (error) {
+      console.error('HomeScreen: Error loading profile:', error);
+    }
   };
 
-  const loadNotifications = async () => {
-    console.log('HomeScreen: Fetching notifications');
-    // TODO: Backend Integration - GET /api/notifications to fetch user notifications
-    // Returns: [{ id, type, content, read, createdAt }]
-    
-    // Mock data for now
-    setNotifications([]);
+  const loadServices = async () => {
+    console.log('HomeScreen: Fetching user services');
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/profile/services`);
+      const data = await response.json();
+      console.log('HomeScreen: Services loaded successfully', data);
+      setServices(data);
+    } catch (error) {
+      console.error('HomeScreen: Error loading services:', error);
+    }
   };
 
   const handleEditProfile = () => {
     console.log('HomeScreen: User tapped Edit Profile button');
-    // TODO: Navigate to edit profile screen
+    router.push('/edit-profile');
   };
 
   const handleNotificationPress = () => {
     console.log('HomeScreen: User tapped notifications icon');
-    setNotificationsExpanded(!notificationsExpanded);
+    router.push('/notifications');
   };
 
   const handleSettingsPress = () => {
     console.log('HomeScreen: User tapped settings icon');
     // TODO: Navigate to settings screen
+  };
+
+  const handleAddPost = () => {
+    console.log('HomeScreen: User tapped Add Post button');
+    // TODO: Navigate to create post screen
   };
 
   const getInitials = (name: string) => {
@@ -90,18 +95,20 @@ export default function HomeScreen() {
 
   const initials = profile ? getInitials(profile.fullName) : 'A';
   const friendsText = profile ? `${profile.friendsCount} Friends` : '0 Friends';
-  const noNotificationsText = 'No new notifications';
-  const allCaughtUpText = "You're all caught up!";
+  const myServicesTitle = 'My Services';
+  const allServicesText = 'ALL';
+  const addPostText = 'Add Post';
+  const noPostsText = 'No posts yet. Share your work!';
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: "Home",
+          title: 'Home',
           headerLargeTitle: true,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <TouchableOpacity onPress={handleNotificationPress}>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity onPress={handleNotificationPress} style={styles.iconButton}>
                 <IconSymbol 
                   ios_icon_name="bell.fill" 
                   android_material_icon_name="notifications" 
@@ -109,7 +116,7 @@ export default function HomeScreen() {
                   color={colors.primary} 
                 />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSettingsPress}>
+              <TouchableOpacity onPress={handleSettingsPress} style={styles.iconButton}>
                 <IconSymbol 
                   ios_icon_name="gear" 
                   android_material_icon_name="settings" 
@@ -121,7 +128,7 @@ export default function HomeScreen() {
           ),
         }}
       />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {profile && (
           <View style={styles.profileCard}>
             <View style={styles.avatarContainer}>
@@ -161,41 +168,56 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <View style={styles.notificationsCard}>
-          <View style={styles.notificationsHeader}>
-            <Text style={styles.notificationsTitle}>Notifications</Text>
-            <TouchableOpacity onPress={handleNotificationPress}>
+        <View style={styles.servicesCard}>
+          <View style={styles.servicesHeader}>
+            <Text style={styles.servicesTitle}>{myServicesTitle}</Text>
+            <TouchableOpacity onPress={() => setServicesExpanded(!servicesExpanded)}>
               <IconSymbol 
-                ios_icon_name={notificationsExpanded ? "chevron.up" : "chevron.down"} 
-                android_material_icon_name={notificationsExpanded ? "expand-less" : "expand-more"} 
+                ios_icon_name={servicesExpanded ? "chevron.up" : "chevron.down"} 
+                android_material_icon_name={servicesExpanded ? "expand-less" : "expand-more"} 
                 size={24} 
                 color={colors.primary} 
               />
             </TouchableOpacity>
           </View>
           
-          {notificationsExpanded && (
-            <View style={styles.notificationsContent}>
-              {notifications.length === 0 ? (
-                <View style={styles.emptyNotifications}>
-                  <IconSymbol 
-                    ios_icon_name="bell.slash" 
-                    android_material_icon_name="notifications-off" 
-                    size={48} 
-                    color={colors.textSecondary} 
-                  />
-                  <Text style={styles.emptyNotificationsText}>{noNotificationsText}</Text>
-                  <Text style={styles.emptyNotificationsSubtext}>{allCaughtUpText}</Text>
-                </View>
-              ) : (
-                <React.Fragment>
-                  {notifications.map((notification, index) => (
-                    <View key={index} style={styles.notificationItem}>
-                      <Text style={styles.notificationContent}>{notification.content}</Text>
-                    </View>
-                  ))}
-                </React.Fragment>
-              )}
+          {servicesExpanded && (
+            <View style={styles.servicesContent}>
+              <View style={styles.serviceFilters}>
+                <TouchableOpacity
+                  style={[styles.serviceFilter, selectedService === 'ALL' && styles.serviceFilterActive]}
+                  onPress={() => setSelectedService('ALL')}
+                >
+                  <Text style={[styles.serviceFilterText, selectedService === 'ALL' && styles.serviceFilterTextActive]}>
+                    {allServicesText}
+                  </Text>
+                </TouchableOpacity>
+                {services.map((service, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.serviceFilter, selectedService === service.serviceName && styles.serviceFilterActive]}
+                    onPress={() => setSelectedService(service.serviceName)}
+                  >
+                    <Text style={[styles.serviceFilterText, selectedService === service.serviceName && styles.serviceFilterTextActive]}>
+                      {service.serviceName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity style={styles.addPostButton} onPress={handleAddPost}>
+                <IconSymbol 
+                  ios_icon_name="plus" 
+                  android_material_icon_name="add" 
+                  size={20} 
+                  color={colors.background} 
+                />
+                <Text style={styles.addPostButtonText}>{addPostText}</Text>
+              </TouchableOpacity>
+
+              <View style={styles.postsContainer}>
+                <Text style={styles.noPostsText}>{noPostsText}</Text>
+              </View>
             </View>
           )}
         </View>
@@ -205,9 +227,16 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  iconButton: {
+    padding: 4,
   },
   profileCard: {
     backgroundColor: colors.backgroundAlt,
@@ -288,48 +317,70 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
-  notificationsCard: {
+  servicesCard: {
     backgroundColor: colors.backgroundAlt,
     margin: 16,
     marginTop: 0,
     borderRadius: 16,
     padding: 20,
   },
-  notificationsHeader: {
+  servicesHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  notificationsTitle: {
+  servicesTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
   },
-  notificationsContent: {
+  servicesContent: {
     marginTop: 16,
   },
-  emptyNotifications: {
+  serviceFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  serviceFilter: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+  },
+  serviceFilterActive: {
+    backgroundColor: colors.primary,
+  },
+  serviceFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  serviceFilterTextActive: {
+    color: colors.background,
+  },
+  addPostButton: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginBottom: 16,
+  },
+  addPostButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.background,
+  },
+  postsContainer: {
     alignItems: 'center',
     paddingVertical: 32,
   },
-  emptyNotificationsText: {
-    fontSize: 16,
-    color: colors.text,
-    marginTop: 16,
-    fontWeight: '600',
-  },
-  emptyNotificationsSubtext: {
+  noPostsText: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 4,
-  },
-  notificationItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  notificationContent: {
-    fontSize: 14,
-    color: colors.text,
   },
 });
