@@ -130,7 +130,7 @@ export default function SettingsScreen() {
 
   const handleNotificationSettings = () => {
     console.log('SettingsScreen: User tapped Notification Settings');
-    Alert.alert('Coming Soon', 'Notification settings will be available soon');
+    router.push('/notification-settings');
   };
 
   const handleAccountSettings = () => {
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
 
   const handlePrivacySettings = () => {
     console.log('SettingsScreen: User tapped Privacy Settings');
-    Alert.alert('Coming Soon', 'Privacy settings will be available soon');
+    router.push('/privacy-settings');
   };
 
   const settingsTitle = 'Settings';
