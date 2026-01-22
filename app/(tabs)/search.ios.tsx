@@ -4,6 +4,9 @@ import { Stack } from "expo-router";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
+import Constants from "expo-constants";
+
+const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
 interface UserResult {
   id: string;
@@ -43,52 +46,72 @@ export default function SearchScreen() {
 
   const loadPopularSkills = async () => {
     console.log('SearchScreen: Fetching popular skills');
-    // TODO: Backend Integration - GET /api/skills/popular to fetch popular skills
-    // Returns: [{ skillName: string, userCount: number }]
-    
-    // Mock data for now
-    setPopularSkills([
-      'Project Management',
-      'DJ Services',
-      'Cooking',
-      'Web Development',
-      'Graphic Design',
-      'Photography',
-      'Music Production',
-      'Video Editing',
-    ]);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/search/skills?popular=true`);
+      const data = await response.json();
+      console.log('SearchScreen: Popular skills response:', data);
+      
+      if (Array.isArray(data)) {
+        // Extract skill names from the response
+        const skillNames = data.map((skill: any) => skill.skillName || skill.name || skill);
+        setPopularSkills(skillNames);
+      } else {
+        console.log('SearchScreen: API returned non-array data, using fallback skills');
+        // Fallback to default skills if API fails
+        setPopularSkills([
+          'Project Management',
+          'DJ Services',
+          'Cooking',
+          'Web Development',
+          'Graphic Design',
+          'Photography',
+          'Music Production',
+          'Video Editing',
+        ]);
+      }
+    } catch (error) {
+      console.error('SearchScreen: Error loading popular skills:', error);
+      // Fallback to default skills if API fails
+      setPopularSkills([
+        'Project Management',
+        'DJ Services',
+        'Cooking',
+        'Web Development',
+        'Graphic Design',
+        'Photography',
+        'Music Production',
+        'Video Editing',
+      ]);
+    }
   };
 
   const performSearch = async () => {
     setIsSearching(true);
     console.log('SearchScreen: Performing search for:', searchQuery);
-    // TODO: Backend Integration - GET /api/search/users?query={searchQuery}&filter={filter}&location={locationFilter} to search users by skill or name
-    // Returns: [{ id, username, fullName, location, bio, skills: [string], mutualFriends: number }]
     
-    // Mock data for now
-    setTimeout(() => {
-      setSearchResults([
-        {
-          id: '1',
-          username: 'johndoe',
-          fullName: 'John Doe',
-          location: 'Brooklyn, NY',
-          bio: 'Full-stack developer passionate about React Native',
-          skills: ['Web Development', 'React Native', 'Node.js'],
-          mutualFriends: 3,
-        },
-        {
-          id: '2',
-          username: 'janesmth',
-          fullName: 'Jane Smith',
-          location: 'Manhattan, NY',
-          bio: 'Creative designer with 5 years of experience',
-          skills: ['Graphic Design', 'UI/UX', 'Branding'],
-          mutualFriends: 1,
-        },
-      ]);
+    try {
+      const queryParams = new URLSearchParams({
+        query: searchQuery,
+        filter: filter,
+        location: locationFilter,
+      });
+      
+      const response = await fetch(`${BACKEND_URL}/api/search/users?${queryParams.toString()}`);
+      const data = await response.json();
+      console.log('SearchScreen: Search results response:', data);
+      
+      if (Array.isArray(data)) {
+        setSearchResults(data);
+      } else {
+        console.log('SearchScreen: API returned non-array data:', data);
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('SearchScreen: Error performing search:', error);
+      setSearchResults([]);
+    } finally {
       setIsSearching(false);
-    }, 500);
+    }
   };
 
   const handleSkillPress = (skill: string) => {
