@@ -48,7 +48,13 @@ export default function HomeScreen() {
       const response = await fetch(`${BACKEND_URL}/api/users/me`);
       const data = await response.json();
       console.log('HomeScreen: Profile loaded successfully', data);
-      setProfile(data);
+      
+      // Only set profile if it's valid (not an error object)
+      if (data && !data.error) {
+        setProfile(data);
+      } else {
+        console.log('HomeScreen: Profile API returned error or invalid data:', data);
+      }
     } catch (error) {
       console.error('HomeScreen: Error loading profile:', error);
     }
@@ -60,9 +66,17 @@ export default function HomeScreen() {
       const response = await fetch(`${BACKEND_URL}/api/profile/services`);
       const data = await response.json();
       console.log('HomeScreen: Services loaded successfully', data);
-      setServices(data);
+      
+      // Only set services if it's a valid array
+      if (Array.isArray(data)) {
+        setServices(data);
+      } else {
+        console.log('HomeScreen: Services API returned non-array data:', data);
+        setServices([]);
+      }
     } catch (error) {
       console.error('HomeScreen: Error loading services:', error);
+      setServices([]);
     }
   };
 
