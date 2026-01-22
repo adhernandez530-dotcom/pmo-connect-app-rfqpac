@@ -101,8 +101,17 @@ export default function HomeScreen() {
     return firstInitial + lastInitial;
   };
 
-  const initials = profile ? getInitials(profile.fullName) : 'A';
-  const friendsText = profile ? `${profile.friendsCount} Friends` : '0 Friends';
+  // Use profile data if available, otherwise use default values
+  const displayProfile = profile || {
+    username: '@username',
+    fullName: 'Your Name',
+    location: 'Your Location',
+    bio: 'Add a bio to tell others about yourself',
+    friendsCount: 0
+  };
+
+  const initials = getInitials(displayProfile.fullName);
+  const friendsText = `${displayProfile.friendsCount} Friends`;
   const notificationsTitle = 'Notifications';
   const noNotificationsText = 'No new notifications';
   const allCaughtUpText = "You're all caught up!";
@@ -133,44 +142,42 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {profile && (
-          <View style={styles.profileCard}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
-            </View>
-            
-            <Text style={styles.username}>{profile.username}</Text>
-            <Text style={styles.fullName}>{profile.fullName}</Text>
-            
-            <View style={styles.locationContainer}>
-              <IconSymbol 
-                ios_icon_name="location.fill" 
-                android_material_icon_name="location-on" 
-                size={16} 
-                color={colors.textSecondary} 
-              />
-              <Text style={styles.location}>{profile.location}</Text>
-            </View>
-            
-            <Text style={styles.bio}>{profile.bio}</Text>
-            
-            <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-              <IconSymbol 
-                ios_icon_name="pencil" 
-                android_material_icon_name="edit" 
-                size={18} 
-                color={colors.background} 
-              />
-              <Text style={styles.editButtonText}>Edit Profile</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.friendsButton}>
-              <Text style={styles.friendsButtonText}>{friendsText}</Text>
+        <View style={styles.profileCard}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
           </View>
-        )}
+          
+          <Text style={styles.username}>{displayProfile.username}</Text>
+          <Text style={styles.fullName}>{displayProfile.fullName}</Text>
+          
+          <View style={styles.locationContainer}>
+            <IconSymbol 
+              ios_icon_name="location.fill" 
+              android_material_icon_name="location-on" 
+              size={16} 
+              color={colors.textSecondary} 
+            />
+            <Text style={styles.location}>{displayProfile.location}</Text>
+          </View>
+          
+          <Text style={styles.bio}>{displayProfile.bio}</Text>
+          
+          <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+            <IconSymbol 
+              ios_icon_name="pencil" 
+              android_material_icon_name="edit" 
+              size={18} 
+              color={colors.background} 
+            />
+            <Text style={styles.editButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.friendsButton}>
+            <Text style={styles.friendsButtonText}>{friendsText}</Text>
+          </View>
+        </View>
 
         <View style={styles.notificationsCard}>
           <View style={styles.notificationsHeader}>
