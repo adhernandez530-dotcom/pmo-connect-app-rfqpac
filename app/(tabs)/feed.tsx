@@ -49,10 +49,18 @@ export default function FeedScreen() {
       console.log('FeedScreen: Fetching feed from backend');
       const response = await fetch(`${BACKEND_URL}/api/feed?sort=${sortBy}`);
       const data = await response.json();
-      console.log('FeedScreen: Feed loaded successfully', data);
-      setPosts(data);
+      console.log('FeedScreen: Feed response received:', data);
+      
+      if (Array.isArray(data)) {
+        console.log('FeedScreen: Feed loaded successfully with', data.length, 'posts');
+        setPosts(data);
+      } else {
+        console.log('FeedScreen: API returned non-array data (likely error):', data);
+        setPosts([]);
+      }
     } catch (error) {
       console.error('FeedScreen: Error loading feed:', error);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -107,6 +115,8 @@ export default function FeedScreen() {
   const commentsText = 'Comments';
   const repostsText = 'Reposts';
   const repostedByText = 'Reposted by';
+  const noPostsText = 'No posts yet';
+  const noPostsSubtext = 'Follow friends to see their posts here';
 
   return (
     <View style={styles.container}>
@@ -134,6 +144,19 @@ export default function FeedScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {posts.length === 0 && !loading && (
+          <View style={styles.emptyState}>
+            <IconSymbol
+              ios_icon_name="newspaper"
+              android_material_icon_name="article"
+              size={64}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.emptyStateTitle}>{noPostsText}</Text>
+            <Text style={styles.emptyStateSubtext}>{noPostsSubtext}</Text>
+          </View>
+        )}
+
         {posts.map((post, index) => {
           const initials = getInitials(post.fullName);
           const likesCountText = `${post.likesCount}`;
@@ -263,6 +286,26 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
   postCard: {
     backgroundColor: colors.backgroundAlt,
