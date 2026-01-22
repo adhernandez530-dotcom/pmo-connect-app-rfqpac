@@ -3,7 +3,7 @@
  * Database schema for user profiles, skills, posts, friendships, messages, and notifications
  */
 
-import { pgTable, text, timestamp, boolean, uuid, foreignKey, unique, check } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, uuid, foreignKey, unique, check, integer } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth-schema.js';
 
@@ -18,6 +18,10 @@ export const userProfiles = pgTable('user_profiles', {
   bio: text('bio'),
   location: text('location'),
   avatarUrl: text('avatar_url'),
+  phoneNumber: text('phone_number'),
+  phoneVerified: boolean('phone_verified').default(false).notNull(),
+  allowContacts: boolean('allow_contacts').default(false).notNull(),
+  onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -46,6 +50,32 @@ export const userSkills = pgTable(
 );
 
 /**
+ * User Services
+ * Services offered by users
+ */
+export const userServices = pgTable('user_services', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  serviceName: text('service_name').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * User Knowledge Topics
+ * Topics/areas of expertise
+ */
+export const userKnowledge = pgTable('user_knowledge', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  topic: text('topic').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
  * Posts/Media Sharing
  * Photos, videos, and audio updates about projects
  */
@@ -57,6 +87,10 @@ export const posts = pgTable('posts', {
   content: text('content'),
   mediaUrl: text('media_url'),
   mediaType: text('media_type'), // 'photo', 'video', 'audio'
+  repostOfId: uuid('repost_of_id').references(() => posts.id, { onDelete: 'cascade' }),
+  likesCount: integer('likes_count').default(0).notNull(),
+  commentsCount: integer('comments_count').default(0).notNull(),
+  repostsCount: integer('reposts_count').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -92,6 +126,37 @@ export const friendships = pgTable(
 );
 
 /**
+ * Post Likes
+ * Tracks which users liked which posts
+ */
+export const postLikes = pgTable('post_likes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id')
+    .notNull()
+    .references(() => posts.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * Post Comments
+ * Comments on posts
+ */
+export const postComments = pgTable('post_comments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id')
+    .notNull()
+    .references(() => posts.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
  * Direct Messages
  * Private conversations between users
  */
@@ -105,6 +170,24 @@ export const messages = pgTable('messages', {
     .references(() => user.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
   read: boolean('read').default(false).notNull(),
+  archived: boolean('archived').default(false).notNull(),
+  muted: boolean('muted').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * Contact Suggestions
+ * Suggested contacts for users based on various sources
+ */
+export const contactSuggestions = pgTable('contact_suggestions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  suggestedUserId: text('suggested_user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  source: text('source').notNull(), // 'mutual_friends', 'skill_match', 'service_needed', etc.
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
