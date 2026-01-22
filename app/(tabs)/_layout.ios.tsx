@@ -14,10 +14,6 @@ export default function TabLayout() {
         <Label>Feed</Label>
         <Icon sf={{ default: 'list.bullet', selected: 'list.bullet' }} drawable="rss-feed" />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="friends">
-        <Label>Friends</Label>
-        <Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} drawable="group" />
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="messages">
         <Label>Messages</Label>
         <Icon sf={{ default: 'message', selected: 'message.fill' }} drawable="message" />

@@ -33,8 +33,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedService, setSelectedService] = useState<string>('ALL');
-  const [servicesExpanded, setServicesExpanded] = useState(true);
+  const [notificationsExpanded, setNotificationsExpanded] = useState(true);
 
   useEffect(() => {
     console.log('HomeScreen: Loading user profile and services');
@@ -95,11 +94,6 @@ export default function HomeScreen() {
     // TODO: Navigate to settings screen
   };
 
-  const handleAddPost = () => {
-    console.log('HomeScreen: User tapped Add Post button');
-    // TODO: Navigate to create post screen
-  };
-
   const getInitials = (name: string) => {
     const nameParts = name.split(' ');
     const firstInitial = nameParts[0]?.[0] || '';
@@ -109,10 +103,10 @@ export default function HomeScreen() {
 
   const initials = profile ? getInitials(profile.fullName) : 'A';
   const friendsText = profile ? `${profile.friendsCount} Friends` : '0 Friends';
+  const notificationsTitle = 'Notifications';
+  const noNotificationsText = 'No new notifications';
+  const allCaughtUpText = "You're all caught up!";
   const myServicesTitle = 'My Services';
-  const allServicesText = 'ALL';
-  const addPostText = 'Add Post';
-  const noPostsText = 'No posts yet. Share your work!';
 
   return (
     <View style={styles.container}>
@@ -178,58 +172,50 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <View style={styles.servicesCard}>
-          <View style={styles.servicesHeader}>
-            <Text style={styles.servicesTitle}>{myServicesTitle}</Text>
-            <TouchableOpacity onPress={() => setServicesExpanded(!servicesExpanded)}>
+        <View style={styles.notificationsCard}>
+          <View style={styles.notificationsHeader}>
+            <Text style={styles.notificationsTitle}>{notificationsTitle}</Text>
+            <TouchableOpacity onPress={() => setNotificationsExpanded(!notificationsExpanded)}>
               <IconSymbol 
-                ios_icon_name={servicesExpanded ? "chevron.up" : "chevron.down"} 
-                android_material_icon_name={servicesExpanded ? "expand-less" : "expand-more"} 
+                ios_icon_name={notificationsExpanded ? "chevron.up" : "chevron.down"} 
+                android_material_icon_name={notificationsExpanded ? "expand-less" : "expand-more"} 
                 size={24} 
                 color={colors.primary} 
               />
             </TouchableOpacity>
           </View>
           
-          {servicesExpanded && (
-            <View style={styles.servicesContent}>
-              <View style={styles.serviceFilters}>
-                <TouchableOpacity
-                  style={[styles.serviceFilter, selectedService === 'ALL' && styles.serviceFilterActive]}
-                  onPress={() => setSelectedService('ALL')}
-                >
-                  <Text style={[styles.serviceFilterText, selectedService === 'ALL' && styles.serviceFilterTextActive]}>
-                    {allServicesText}
-                  </Text>
-                </TouchableOpacity>
-                {services.map((service, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.serviceFilter, selectedService === service.serviceName && styles.serviceFilterActive]}
-                    onPress={() => setSelectedService(service.serviceName)}
-                  >
-                    <Text style={[styles.serviceFilterText, selectedService === service.serviceName && styles.serviceFilterTextActive]}>
-                      {service.serviceName}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity style={styles.addPostButton} onPress={handleAddPost}>
+          {notificationsExpanded && (
+            <View style={styles.notificationsContent}>
+              <View style={styles.notificationIconContainer}>
                 <IconSymbol 
-                  ios_icon_name="plus" 
-                  android_material_icon_name="add" 
-                  size={20} 
-                  color={colors.background} 
+                  ios_icon_name="bell.fill" 
+                  android_material_icon_name="notifications" 
+                  size={48} 
+                  color={colors.textSecondary} 
                 />
-                <Text style={styles.addPostButtonText}>{addPostText}</Text>
-              </TouchableOpacity>
-
-              <View style={styles.postsContainer}>
-                <Text style={styles.noPostsText}>{noPostsText}</Text>
               </View>
+              <Text style={styles.noNotificationsText}>{noNotificationsText}</Text>
+              <Text style={styles.allCaughtUpText}>{allCaughtUpText}</Text>
             </View>
           )}
+        </View>
+
+        <View style={styles.servicesCard}>
+          <Text style={styles.servicesTitle}>{myServicesTitle}</Text>
+          <View style={styles.servicesContent}>
+            {services.length > 0 ? (
+              <View style={styles.servicesList}>
+                {services.map((service, index) => (
+                  <View key={index} style={styles.serviceItem}>
+                    <Text style={styles.serviceText}>{service.serviceName}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noServicesText}>No services added yet</Text>
+            )}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -345,6 +331,41 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
+  notificationsCard: {
+    backgroundColor: colors.backgroundAlt,
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 16,
+    padding: 20,
+  },
+  notificationsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  notificationsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  notificationsContent: {
+    marginTop: 24,
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  notificationIconContainer: {
+    marginBottom: 16,
+  },
+  noNotificationsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  allCaughtUpText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
   servicesCard: {
     backgroundColor: colors.backgroundAlt,
     margin: 16,
@@ -352,63 +373,33 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
   },
-  servicesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   servicesTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
+    marginBottom: 16,
   },
   servicesContent: {
-    marginTop: 16,
+    marginTop: 8,
   },
-  serviceFilters: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  servicesList: {
     gap: 8,
-    marginBottom: 16,
   },
-  serviceFilter: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+  serviceItem: {
     backgroundColor: colors.card,
-  },
-  serviceFilterActive: {
-    backgroundColor: colors.primary,
-  },
-  serviceFilterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  serviceFilterTextActive: {
-    color: colors.background,
-  },
-  addPostButton: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
     paddingVertical: 12,
-    borderRadius: 24,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
   },
-  addPostButtonText: {
-    fontSize: 16,
+  serviceText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.background,
+    color: colors.text,
   },
-  postsContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  noPostsText: {
+  noServicesText: {
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 16,
   },
 });

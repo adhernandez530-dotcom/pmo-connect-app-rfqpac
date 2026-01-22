@@ -19,12 +19,6 @@ export default function TabLayout() {
       label: 'Feed',
     },
     {
-      name: 'friends',
-      route: '/(tabs)/friends',
-      icon: 'group',
-      label: 'Friends',
-    },
-    {
       name: 'messages',
       route: '/(tabs)/messages',
       icon: 'message',
@@ -49,7 +43,6 @@ export default function TabLayout() {
       >
         <Stack.Screen key="home" name="(home)" />
         <Stack.Screen key="feed" name="feed" />
-        <Stack.Screen key="friends" name="friends" />
         <Stack.Screen key="messages" name="messages" />
         <Stack.Screen key="search" name="search" />
       </Stack>
