@@ -41,10 +41,19 @@ export default function NotificationsScreen() {
       console.log('NotificationsScreen: Fetching notifications from backend');
       const response = await fetch(`${BACKEND_URL}/api/notifications/detailed`);
       const data = await response.json();
-      console.log('NotificationsScreen: Notifications loaded successfully', data);
-      setNotifications(data);
+      console.log('NotificationsScreen: Notifications response:', data);
+      
+      // Validate that data is an array
+      if (Array.isArray(data)) {
+        console.log('NotificationsScreen: Notifications loaded successfully, count:', data.length);
+        setNotifications(data);
+      } else {
+        console.log('NotificationsScreen: API returned non-array data, setting empty array');
+        setNotifications([]);
+      }
     } catch (error) {
       console.error('NotificationsScreen: Error loading notifications:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -56,6 +65,9 @@ export default function NotificationsScreen() {
     try {
       await fetch(`${BACKEND_URL}/api/notifications/${notification.id}/read`, {
         method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({})
       });
       loadNotifications();
