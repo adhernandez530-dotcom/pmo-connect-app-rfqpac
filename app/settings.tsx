@@ -133,9 +133,9 @@ export default function SettingsScreen() {
     router.push('/notification-settings');
   };
 
-  const handleAccountSettings = () => {
-    console.log('SettingsScreen: User tapped Account Settings');
-    Alert.alert('Coming Soon', 'Account settings will be available soon');
+  const handlePermissionsSettings = () => {
+    console.log('SettingsScreen: User tapped Permissions Settings');
+    router.push('/permissions-settings');
   };
 
   const handlePrivacySettings = () => {
@@ -146,7 +146,7 @@ export default function SettingsScreen() {
   const settingsTitle = 'Settings';
   const accountSectionTitle = 'Account';
   const notificationSettingsText = 'Notification Settings';
-  const accountSettingsText = 'Account Settings';
+  const permissionsSettingsText = 'Permissions';
   const privacySettingsText = 'Privacy Settings';
   const legalSectionTitle = 'Legal';
   const privacyPolicyText = 'Privacy Policy';
@@ -188,15 +188,15 @@ export default function SettingsScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleAccountSettings}>
+          <TouchableOpacity style={styles.settingItem} onPress={handlePermissionsSettings}>
             <View style={styles.settingLeft}>
               <IconSymbol 
-                ios_icon_name="person.fill" 
-                android_material_icon_name="person" 
+                ios_icon_name="checkmark.shield.fill" 
+                android_material_icon_name="verified-user" 
                 size={24} 
                 color={colors.primary} 
               />
-              <Text style={styles.settingText}>{accountSettingsText}</Text>
+              <Text style={styles.settingText}>{permissionsSettingsText}</Text>
             </View>
             <IconSymbol 
               ios_icon_name="chevron.right" 
