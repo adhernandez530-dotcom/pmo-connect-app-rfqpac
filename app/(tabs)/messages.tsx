@@ -57,9 +57,17 @@ export default function MessagesScreen() {
       const response = await fetch(endpoint);
       const data = await response.json();
       console.log('MessagesScreen: Conversations loaded successfully', data);
-      setConversations(data);
+      
+      // Validate that data is an array before setting state
+      if (Array.isArray(data)) {
+        setConversations(data);
+      } else {
+        console.log('MessagesScreen: API returned non-array data:', data);
+        setConversations([]);
+      }
     } catch (error) {
       console.error('MessagesScreen: Error loading conversations:', error);
+      setConversations([]);
     }
   };
 
