@@ -28,14 +28,9 @@ interface Conversation {
   muted: boolean;
 }
 
-type FilterType = 'friends' | 'put_me_on' | 'anyone';
-type LocationFilter = 'nearby' | 'anywhere';
-
 export default function MessagesScreen() {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [filter, setFilter] = useState<FilterType>('friends');
-  const [locationFilter, setLocationFilter] = useState<LocationFilter>('anywhere');
   const [showArchived, setShowArchived] = useState(false);
   const [previewModal, setPreviewModal] = useState<{ visible: boolean; conversation: Conversation | null }>({
     visible: false,
@@ -43,16 +38,16 @@ export default function MessagesScreen() {
   });
 
   useEffect(() => {
-    console.log('MessagesScreen: Loading conversations with filter:', filter, locationFilter);
+    console.log('MessagesScreen: Loading conversations');
     loadConversations();
-  }, [filter, locationFilter, showArchived]);
+  }, [showArchived]);
 
   const loadConversations = async () => {
     try {
       console.log('MessagesScreen: Fetching conversations from backend');
       const endpoint = showArchived
         ? `${BACKEND_URL}/api/messages/archived`
-        : `${BACKEND_URL}/api/messages/conversations?filter=${filter}&location=${locationFilter}`;
+        : `${BACKEND_URL}/api/messages/conversations`;
       const response = await fetch(endpoint);
       const data = await response.json();
       console.log('MessagesScreen: Conversations loaded successfully', data);
@@ -88,11 +83,6 @@ export default function MessagesScreen() {
     return firstInitial + lastInitial;
   };
 
-  const friendsText = 'Friends';
-  const putMeOnText = 'Put me On';
-  const anyoneText = 'Anyone';
-  const nearbyText = 'Nearby';
-  const anywhereText = 'Anywhere';
   const mutualFriendsText = 'mutual friends';
   const noConversationsText = 'No conversations yet';
 
@@ -115,68 +105,6 @@ export default function MessagesScreen() {
         }}
       />
       <View style={styles.container}>
-        {!showArchived && (
-          <>
-            <View style={styles.filterContainer}>
-              <TouchableOpacity
-                style={[styles.filterButton, filter === 'friends' && styles.filterButtonActive]}
-                onPress={() => setFilter('friends')}
-              >
-                <Text style={[styles.filterButtonText, filter === 'friends' && styles.filterButtonTextActive]}>
-                  {friendsText}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.filterButton, filter === 'put_me_on' && styles.filterButtonActive]}
-                onPress={() => setFilter('put_me_on')}
-              >
-                <Text style={[styles.filterButtonText, filter === 'put_me_on' && styles.filterButtonTextActive]}>
-                  {putMeOnText}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.filterButton, filter === 'anyone' && styles.filterButtonActive]}
-                onPress={() => setFilter('anyone')}
-              >
-                <Text style={[styles.filterButtonText, filter === 'anyone' && styles.filterButtonTextActive]}>
-                  {anyoneText}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.locationFilterContainer}>
-              <TouchableOpacity
-                style={[styles.locationButton, locationFilter === 'nearby' && styles.locationButtonActive]}
-                onPress={() => setLocationFilter('nearby')}
-              >
-                <IconSymbol
-                  ios_icon_name="location.fill"
-                  android_material_icon_name="location-on"
-                  size={16}
-                  color={locationFilter === 'nearby' ? colors.background : colors.textSecondary}
-                />
-                <Text style={[styles.locationButtonText, locationFilter === 'nearby' && styles.locationButtonTextActive]}>
-                  {nearbyText}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.locationButton, locationFilter === 'anywhere' && styles.locationButtonActive]}
-                onPress={() => setLocationFilter('anywhere')}
-              >
-                <IconSymbol
-                  ios_icon_name="globe"
-                  android_material_icon_name="public"
-                  size={16}
-                  color={locationFilter === 'anywhere' ? colors.background : colors.textSecondary}
-                />
-                <Text style={[styles.locationButtonText, locationFilter === 'anywhere' && styles.locationButtonTextActive]}>
-                  {anywhereText}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {conversations.length === 0 ? (
             <View style={styles.emptyState}>
@@ -282,55 +210,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  filterButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundAlt,
-  },
-  filterButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  filterButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  filterButtonTextActive: {
-    color: colors.background,
-  },
-  locationFilterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    gap: 12,
-  },
-  locationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: colors.backgroundAlt,
-  },
-  locationButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  locationButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  locationButtonTextActive: {
-    color: colors.background,
   },
   scrollView: {
     flex: 1,

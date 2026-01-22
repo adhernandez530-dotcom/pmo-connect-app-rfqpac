@@ -14,11 +14,16 @@ interface UserResult {
   mutualFriends: number;
 }
 
+type FilterType = 'friends' | 'put_me_on' | 'anyone';
+type LocationFilter = 'nearby' | 'anywhere';
+
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
   const [popularSkills, setPopularSkills] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [filter, setFilter] = useState<FilterType>('friends');
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>('anywhere');
 
   useEffect(() => {
     console.log('SearchScreen: Loading popular skills');
@@ -27,13 +32,13 @@ export default function SearchScreen() {
 
   useEffect(() => {
     if (searchQuery.length > 0) {
-      console.log('SearchScreen: Searching for:', searchQuery);
+      console.log('SearchScreen: Searching for:', searchQuery, 'with filter:', filter, locationFilter);
       performSearch();
     } else {
       setSearchResults([]);
       setIsSearching(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, filter, locationFilter]);
 
   const loadPopularSkills = async () => {
     console.log('SearchScreen: Fetching popular skills');
@@ -56,7 +61,7 @@ export default function SearchScreen() {
   const performSearch = async () => {
     setIsSearching(true);
     console.log('SearchScreen: Performing search for:', searchQuery);
-    // TODO: Backend Integration - GET /api/search/users?query={searchQuery} to search users by skill or name
+    // TODO: Backend Integration - GET /api/search/users?query={searchQuery}&filter={filter}&location={locationFilter} to search users by skill or name
     // Returns: [{ id, username, fullName, location, bio, skills: [string], mutualFriends: number }]
     
     // Mock data for now
@@ -107,11 +112,74 @@ export default function SearchScreen() {
   const tryDifferentText = 'Try searching for a different skill or name';
   const popularSkillsText = 'Popular Skills';
   const discoverText = 'Discover people by their skills and expertise';
+  const friendsText = 'Friends';
+  const putMeOnText = 'Put me On';
+  const anyoneText = 'Anyone';
+  const nearbyText = 'Nearby';
+  const anywhereText = 'Anywhere';
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Search</Text>
+      </View>
+
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'friends' && styles.filterButtonActive]}
+          onPress={() => setFilter('friends')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'friends' && styles.filterButtonTextActive]}>
+            {friendsText}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'put_me_on' && styles.filterButtonActive]}
+          onPress={() => setFilter('put_me_on')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'put_me_on' && styles.filterButtonTextActive]}>
+            {putMeOnText}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'anyone' && styles.filterButtonActive]}
+          onPress={() => setFilter('anyone')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'anyone' && styles.filterButtonTextActive]}>
+            {anyoneText}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.locationFilterContainer}>
+        <TouchableOpacity
+          style={[styles.locationButton, locationFilter === 'nearby' && styles.locationButtonActive]}
+          onPress={() => setLocationFilter('nearby')}
+        >
+          <IconSymbol
+            ios_icon_name="location.fill"
+            android_material_icon_name="location-on"
+            size={16}
+            color={locationFilter === 'nearby' ? colors.background : colors.textSecondary}
+          />
+          <Text style={[styles.locationButtonText, locationFilter === 'nearby' && styles.locationButtonTextActive]}>
+            {nearbyText}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.locationButton, locationFilter === 'anywhere' && styles.locationButtonActive]}
+          onPress={() => setLocationFilter('anywhere')}
+        >
+          <IconSymbol
+            ios_icon_name="globe"
+            android_material_icon_name="public"
+            size={16}
+            color={locationFilter === 'anywhere' ? colors.background : colors.textSecondary}
+          />
+          <Text style={[styles.locationButtonText, locationFilter === 'anywhere' && styles.locationButtonTextActive]}>
+            {anywhereText}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
@@ -242,9 +310,59 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
   },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  filterButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundAlt,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  filterButtonTextActive: {
+    color: colors.background,
+  },
+  locationFilterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: colors.backgroundAlt,
+  },
+  locationButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  locationButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  locationButtonTextActive: {
+    color: colors.background,
+  },
   searchContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 16,
   },
   searchBar: {
     flexDirection: 'row',
