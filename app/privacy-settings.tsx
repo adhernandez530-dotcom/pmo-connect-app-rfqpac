@@ -264,7 +264,7 @@ export default function PrivacySettingsScreen() {
       />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <TouchableOpacity style={styles.settingItem} onPress={handleProfileVisibilityPress}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleProfileVisibilityPress} activeOpacity={0.7}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{profileVisibilityLabel}</Text>
               <Text style={styles.settingValue}>{profileVisibilityValue}</Text>
@@ -272,12 +272,12 @@ export default function PrivacySettingsScreen() {
             <IconSymbol 
               ios_icon_name="chevron.right" 
               android_material_icon_name="chevron-right" 
-              size={24} 
+              size={20} 
               color={colors.textSecondary} 
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleMessagePermissionPress}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleMessagePermissionPress} activeOpacity={0.7}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{messagePermissionLabel}</Text>
               <Text style={styles.settingValue}>{messagePermissionValue}</Text>
@@ -285,12 +285,12 @@ export default function PrivacySettingsScreen() {
             <IconSymbol 
               ios_icon_name="chevron.right" 
               android_material_icon_name="chevron-right" 
-              size={24} 
+              size={20} 
               color={colors.textSecondary} 
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleServicesVisibilityPress}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleServicesVisibilityPress} activeOpacity={0.7}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{servicesVisibilityLabel}</Text>
               <Text style={styles.settingValue}>{servicesVisibilityValue}</Text>
@@ -298,12 +298,12 @@ export default function PrivacySettingsScreen() {
             <IconSymbol 
               ios_icon_name="chevron.right" 
               android_material_icon_name="chevron-right" 
-              size={24} 
+              size={20} 
               color={colors.textSecondary} 
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleFriendsListVisibilityPress}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleFriendsListVisibilityPress} activeOpacity={0.7}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{friendsListVisibilityLabel}</Text>
               <Text style={styles.settingValue}>{friendsListVisibilityValue}</Text>
@@ -311,12 +311,12 @@ export default function PrivacySettingsScreen() {
             <IconSymbol 
               ios_icon_name="chevron.right" 
               android_material_icon_name="chevron-right" 
-              size={24} 
+              size={20} 
               color={colors.textSecondary} 
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleTagPermissionPress}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleTagPermissionPress} activeOpacity={0.7}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{tagPermissionLabel}</Text>
               <Text style={styles.settingValue}>{tagPermissionValue}</Text>
@@ -324,12 +324,12 @@ export default function PrivacySettingsScreen() {
             <IconSymbol 
               ios_icon_name="chevron.right" 
               android_material_icon_name="chevron-right" 
-              size={24} 
+              size={20} 
               color={colors.textSecondary} 
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleCommentPermissionPress}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleCommentPermissionPress} activeOpacity={0.7}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{commentPermissionLabel}</Text>
               <Text style={styles.settingValue}>{commentPermissionValue}</Text>
@@ -337,30 +337,32 @@ export default function PrivacySettingsScreen() {
             <IconSymbol 
               ios_icon_name="chevron.right" 
               android_material_icon_name="chevron-right" 
-              size={24} 
+              size={20} 
               color={colors.textSecondary} 
             />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.blockedUsersItem} onPress={handleBlockedUsersPress}>
-            <View style={styles.settingLeft}>
-              <IconSymbol 
-                ios_icon_name="hand.raised.fill" 
-                android_material_icon_name="block" 
-                size={24} 
-                color="#FF3B30" 
-              />
-              <View style={styles.blockedUsersContent}>
-                <Text style={styles.blockedUsersLabel}>{blockedUsersLabel}</Text>
-                <Text style={styles.blockedUsersDesc}>{blockedUsersDesc}</Text>
+        <View style={styles.blockedSection}>
+          <TouchableOpacity style={styles.blockedUsersItem} onPress={handleBlockedUsersPress} activeOpacity={0.7}>
+            <View style={styles.blockedLeft}>
+              <View style={styles.iconContainer}>
+                <IconSymbol 
+                  ios_icon_name="hand.raised.fill" 
+                  android_material_icon_name="block" 
+                  size={22} 
+                  color="#FF3B30" 
+                />
+              </View>
+              <View style={styles.blockedContent}>
+                <Text style={styles.blockedLabel}>{blockedUsersLabel}</Text>
+                <Text style={styles.blockedDesc}>{blockedUsersDesc}</Text>
               </View>
             </View>
             <IconSymbol 
               ios_icon_name="chevron.right" 
               android_material_icon_name="chevron-right" 
-              size={24} 
+              size={20} 
               color={colors.textSecondary} 
             />
           </TouchableOpacity>
@@ -405,6 +407,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
+  blockedSection: {
+    marginTop: 32,
+    paddingHorizontal: 16,
+  },
   blockedUsersItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -414,24 +420,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
   },
-  settingLeft: {
+  blockedLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     flex: 1,
   },
-  blockedUsersContent: {
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  blockedContent: {
     flex: 1,
   },
-  blockedUsersLabel: {
+  blockedLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
     marginBottom: 2,
   },
-  blockedUsersDesc: {
+  blockedDesc: {
     fontSize: 14,
     color: colors.textSecondary,
+    lineHeight: 18,
   },
   bottomPadding: {
     height: 40,
