@@ -47,10 +47,17 @@ export default function FriendsScreen() {
       console.log('FriendsScreen: Fetching friends from backend');
       const response = await fetch(`${BACKEND_URL}/api/friends`);
       const data = await response.json();
-      console.log('FriendsScreen: Friends loaded successfully', data);
-      setFriends(data);
+      console.log('FriendsScreen: Friends response:', data);
+      
+      if (Array.isArray(data)) {
+        setFriends(data);
+      } else {
+        console.log('FriendsScreen: API returned non-array data (likely error):', data);
+        setFriends([]);
+      }
     } catch (error) {
       console.error('FriendsScreen: Error loading friends:', error);
+      setFriends([]);
     } finally {
       setLoading(false);
     }
@@ -61,10 +68,17 @@ export default function FriendsScreen() {
       console.log('FriendsScreen: Fetching friend requests from backend');
       const response = await fetch(`${BACKEND_URL}/api/friends/requests`);
       const data = await response.json();
-      console.log('FriendsScreen: Friend requests loaded successfully', data);
-      setFriendRequests(data);
+      console.log('FriendsScreen: Friend requests response:', data);
+      
+      if (Array.isArray(data)) {
+        setFriendRequests(data);
+      } else {
+        console.log('FriendsScreen: API returned non-array data (likely error):', data);
+        setFriendRequests([]);
+      }
     } catch (error) {
       console.error('FriendsScreen: Error loading friend requests:', error);
+      setFriendRequests([]);
     }
   };
 
