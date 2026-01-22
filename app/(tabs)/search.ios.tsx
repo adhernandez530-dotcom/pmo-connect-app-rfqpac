@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Stack } from "expo-router";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
 import { colors } from "@/styles/commonStyles";
@@ -29,22 +29,7 @@ export default function SearchScreen() {
   const [filter, setFilter] = useState<FilterType>('friends');
   const [locationFilter, setLocationFilter] = useState<LocationFilter>('anywhere');
 
-  useEffect(() => {
-    console.log('SearchScreen: Loading popular skills');
-    loadPopularSkills();
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery.length > 0) {
-      console.log('SearchScreen: Searching for:', searchQuery, 'with filter:', filter, locationFilter);
-      performSearch();
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  }, [searchQuery, filter, locationFilter]);
-
-  const loadPopularSkills = async () => {
+  const loadPopularSkills = useCallback(async () => {
     console.log('SearchScreen: Fetching popular skills');
     try {
       const response = await fetch(`${BACKEND_URL}/api/search/skills?popular=true`);
@@ -83,9 +68,9 @@ export default function SearchScreen() {
         'Video Editing',
       ]);
     }
-  };
+  }, []);
 
-  const performSearch = async () => {
+  const performSearch = useCallback(async () => {
     setIsSearching(true);
     console.log('SearchScreen: Performing search for:', searchQuery);
     
@@ -112,7 +97,22 @@ export default function SearchScreen() {
     } finally {
       setIsSearching(false);
     }
-  };
+  }, [searchQuery, filter, locationFilter]);
+
+  useEffect(() => {
+    console.log('SearchScreen: Loading popular skills');
+    loadPopularSkills();
+  }, [loadPopularSkills]);
+
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      console.log('SearchScreen: Searching for:', searchQuery, 'with filter:', filter, locationFilter);
+      performSearch();
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  }, [searchQuery, filter, locationFilter, performSearch]);
 
   const handleSkillPress = (skill: string) => {
     console.log('SearchScreen: User tapped skill:', skill);

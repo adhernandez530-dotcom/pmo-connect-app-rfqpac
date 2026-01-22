@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, ImageSourcePropType } from "react-native";
 import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
@@ -40,12 +40,7 @@ export default function FeedScreen() {
   const [sortBy, setSortBy] = useState<'recent' | 'popularity'>('recent');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    console.log('FeedScreen: Loading feed with sort:', sortBy);
-    loadFeed();
-  }, [sortBy]);
-
-  const loadFeed = async () => {
+  const loadFeed = useCallback(async () => {
     try {
       console.log('FeedScreen: Fetching feed from backend');
       const response = await fetch(`${BACKEND_URL}/api/feed?sort=${sortBy}`);
@@ -65,7 +60,12 @@ export default function FeedScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sortBy]);
+
+  useEffect(() => {
+    console.log('FeedScreen: Loading feed with sort:', sortBy);
+    loadFeed();
+  }, [sortBy, loadFeed]);
 
   const handleLike = async (postId: string) => {
     console.log('FeedScreen: User tapped like on post:', postId);
@@ -112,7 +112,6 @@ export default function FeedScreen() {
 
   const recentText = 'Recent';
   const popularityText = 'Popularity';
-  const repostedByText = 'Reposted by';
   const noPostsText = 'No posts yet';
   const noPostsSubtext = 'Follow friends to see their posts here';
 
@@ -158,7 +157,7 @@ export default function FeedScreen() {
             const likesCountText = `${post.likesCount}`;
             const commentsCountText = `${post.commentsCount}`;
             const repostsCountText = `${post.repostsCount}`;
-            const repostInfo = post.repostOf ? `${repostedByText} ${post.repostOf.fullName}` : '';
+            const repostInfo = post.repostOf ? `Reposted by ${post.repostOf.fullName}` : '';
 
             return (
               <View key={index} style={styles.postCard}>

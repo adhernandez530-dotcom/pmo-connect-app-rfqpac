@@ -4,7 +4,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Alert }
 import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import * as Camera from "expo-camera";
+import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as Contacts from "expo-contacts";
 import * as Location from "expo-location";

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, ImageSourcePropType, Modal } from "react-native";
 import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
@@ -37,12 +37,7 @@ export default function MessagesScreen() {
     conversation: null,
   });
 
-  useEffect(() => {
-    console.log('MessagesScreen: Loading conversations');
-    loadConversations();
-  }, [showArchived]);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       console.log('MessagesScreen: Fetching conversations from backend');
       const endpoint = showArchived
@@ -63,7 +58,12 @@ export default function MessagesScreen() {
       console.error('MessagesScreen: Error loading conversations:', error);
       setConversations([]);
     }
-  };
+  }, [showArchived]);
+
+  useEffect(() => {
+    console.log('MessagesScreen: Loading conversations');
+    loadConversations();
+  }, [showArchived, loadConversations]);
 
   const handleConversationPress = (userId: string) => {
     console.log('MessagesScreen: User tapped conversation:', userId);
