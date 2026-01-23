@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, ImageSourcePropType } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, ImageSourcePropType, TextInput } from "react-native";
 import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -36,6 +36,7 @@ export default function FriendsScreen() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     console.log('FriendsScreen: Loading friends and requests');
@@ -117,15 +118,53 @@ export default function FriendsScreen() {
     return firstInitial + lastInitial;
   };
 
+  const filteredFriends = friends.filter(friend => {
+    const query = searchQuery.toLowerCase();
+    const matchesName = friend.fullName.toLowerCase().includes(query);
+    const matchesUsername = friend.username.toLowerCase().includes(query);
+    const matchesLocation = friend.location?.toLowerCase().includes(query);
+    return matchesName || matchesUsername || matchesLocation;
+  });
+
   const friendRequestsTitle = 'Friend Requests';
   const myFriendsTitle = 'My Friends';
   const noFriendsText = 'No friends yet';
+  const noResultsText = 'No friends found';
   const acceptText = 'Accept';
   const rejectText = 'Reject';
+  const searchPlaceholder = 'Search friends...';
+  const friendsCountText = `${filteredFriends.length} ${filteredFriends.length === 1 ? 'Friend' : 'Friends'}`;
 
   return (
     <>
       <Stack.Screen options={{ title: 'Friends', headerLargeTitle: true }} />
+      
+      <View style={styles.searchContainer}>
+        <IconSymbol
+          ios_icon_name="magnifyingglass"
+          android_material_icon_name="search"
+          size={20}
+          color={colors.textSecondary}
+        />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={searchPlaceholder}
+          placeholderTextColor={colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <IconSymbol
+              ios_icon_name="xmark.circle.fill"
+              android_material_icon_name="cancel"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {friendRequests.length > 0 && (
           <View style={styles.section}>
@@ -168,20 +207,27 @@ export default function FriendsScreen() {
         )}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{myFriendsTitle}</Text>
-          {friends.length === 0 ? (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{myFriendsTitle}</Text>
+            {friends.length > 0 && (
+              <Text style={styles.friendsCount}>{friendsCountText}</Text>
+            )}
+          </View>
+          {filteredFriends.length === 0 ? (
             <View style={styles.emptyState}>
               <IconSymbol
-                ios_icon_name="person.2.slash"
-                android_material_icon_name="group-off"
+                ios_icon_name={searchQuery ? "magnifyingglass" : "person.2.slash"}
+                android_material_icon_name={searchQuery ? "search-off" : "group-off"}
                 size={48}
                 color={colors.textSecondary}
               />
-              <Text style={styles.emptyStateText}>{noFriendsText}</Text>
+              <Text style={styles.emptyStateText}>
+                {searchQuery ? noResultsText : noFriendsText}
+              </Text>
             </View>
           ) : (
             <React.Fragment>
-              {friends.map((friend, index) => {
+              {filteredFriends.map((friend, index) => {
                 const initials = getInitials(friend.fullName);
                 const locationText = friend.location || '';
                 return (
@@ -232,15 +278,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundAlt,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+  },
   section: {
     marginTop: 20,
     paddingHorizontal: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 12,
+  },
+  friendsCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   requestCard: {
     backgroundColor: colors.backgroundAlt,

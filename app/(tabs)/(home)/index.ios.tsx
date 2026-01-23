@@ -121,6 +121,11 @@ export default function HomeScreen() {
     router.push('/settings');
   };
 
+  const handleFriendsPress = () => {
+    console.log('HomeScreen: User tapped Friends button');
+    router.push('/(tabs)/friends');
+  };
+
   const getInitials = (name: string) => {
     const nameParts = name.split(' ');
     const firstInitial = nameParts[0]?.[0] || '';
@@ -208,9 +213,15 @@ export default function HomeScreen() {
             <Text style={styles.editButtonText}>Edit Profile</Text>
           </TouchableOpacity>
           
-          <View style={styles.friendsButton}>
+          <TouchableOpacity style={styles.friendsButton} onPress={handleFriendsPress}>
             <Text style={styles.friendsButtonText}>{friendsText}</Text>
-          </View>
+            <IconSymbol 
+              ios_icon_name="chevron.right" 
+              android_material_icon_name="chevron-right" 
+              size={16} 
+              color={colors.primary} 
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.notificationsCard}>
@@ -394,6 +405,9 @@ const styles = StyleSheet.create({
   },
   friendsButton: {
     backgroundColor: colors.card,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingVertical: 8,
     paddingHorizontal: 24,
     borderRadius: 16,
