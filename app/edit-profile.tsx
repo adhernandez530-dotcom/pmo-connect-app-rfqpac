@@ -83,6 +83,8 @@ export default function EditProfileScreen() {
       }
     } catch (error) {
       console.error('EditProfileScreen: Error loading profile:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
       Alert.alert('Error', 'Failed to load profile data');
     } finally {
       setLoading(false);
@@ -99,6 +101,8 @@ export default function EditProfileScreen() {
       }
     } catch (error) {
       console.error('EditProfileScreen: Error loading services:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
     }
   };
 
@@ -112,6 +116,8 @@ export default function EditProfileScreen() {
       }
     } catch (error) {
       console.error('EditProfileScreen: Error loading knowledge:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
     }
   };
 
@@ -163,7 +169,9 @@ export default function EditProfileScreen() {
       setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error adding service:', error);
-      Alert.alert('Error', 'Failed to add service. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
+      Alert.alert('Error', `Failed to add service: ${errorMessage}`);
     }
   };
 
@@ -179,7 +187,9 @@ export default function EditProfileScreen() {
       setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error removing service:', error);
-      Alert.alert('Error', 'Failed to remove service');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
+      Alert.alert('Error', `Failed to remove service: ${errorMessage}`);
     }
   };
 
@@ -208,7 +218,9 @@ export default function EditProfileScreen() {
       setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error adding knowledge topic:', error);
-      Alert.alert('Error', 'Failed to add knowledge topic. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
+      Alert.alert('Error', `Failed to add knowledge topic: ${errorMessage}`);
     }
   };
 
@@ -224,7 +236,9 @@ export default function EditProfileScreen() {
       setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error removing knowledge topic:', error);
-      Alert.alert('Error', 'Failed to remove knowledge topic');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
+      Alert.alert('Error', `Failed to remove knowledge topic: ${errorMessage}`);
     }
   };
 
@@ -269,7 +283,9 @@ export default function EditProfileScreen() {
       }, 1500);
     } catch (error) {
       console.error('EditProfileScreen: Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('EditProfileScreen: Error details:', errorMessage);
+      Alert.alert('Error', `Failed to update profile: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
