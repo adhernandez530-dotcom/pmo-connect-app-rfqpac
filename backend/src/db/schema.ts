@@ -206,3 +206,18 @@ export const notifications = pgTable('notifications', {
   relatedUserId: text('related_user_id').references(() => user.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+/**
+ * Verification Codes
+ * Temporary codes for account actions (deactivation, phone verification, etc.)
+ */
+export const verificationCodes = pgTable('verification_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(),
+  type: text('type').notNull(), // 'account_deactivation', 'phone_verification', etc.
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
