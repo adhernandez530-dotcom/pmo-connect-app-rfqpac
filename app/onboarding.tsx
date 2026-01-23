@@ -16,9 +16,6 @@ import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { authenticatedPost, authenticatedGet } from "@/utils/api";
-import Constants from "expo-constants";
-
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || "http://localhost:3000";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -56,7 +53,7 @@ export default function OnboardingScreen() {
 
     try {
       const response = await authenticatedGet(
-        `${BACKEND_URL}/api/onboarding/check-username/${usernameToCheck}`
+        `/api/onboarding/check-username/${usernameToCheck}`
       );
 
       if (response.available) {
@@ -172,28 +169,22 @@ export default function OnboardingScreen() {
     }
 
     setLoading(true);
-    console.log("Completing onboarding with data:", {
+    
+    const onboardingData = {
       username,
       fullName,
-      location,
-      bio,
-      phoneNumber,
+      location: location || undefined,
+      bio: bio || undefined,
+      phoneNumber: phoneNumber || undefined,
       allowContacts,
-      services,
-      knowledge,
-    });
+      services: services.length > 0 ? services : undefined,
+      knowledge: knowledge.length > 0 ? knowledge : undefined,
+    };
+    
+    console.log("Completing onboarding with data:", onboardingData);
 
     try {
-      const response = await authenticatedPost(`${BACKEND_URL}/api/onboarding/complete`, {
-        username,
-        fullName,
-        location: location || undefined,
-        bio: bio || undefined,
-        phoneNumber: phoneNumber || undefined,
-        allowContacts,
-        services: services.length > 0 ? services : undefined,
-        knowledge: knowledge.length > 0 ? knowledge : undefined,
-      });
+      const response = await authenticatedPost(`/api/onboarding/complete`, onboardingData);
 
       console.log("Onboarding completed successfully:", response);
       Alert.alert("Welcome!", "Your profile has been set up successfully", [
@@ -204,18 +195,22 @@ export default function OnboardingScreen() {
       ]);
     } catch (error: any) {
       console.error("Error completing onboarding:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to complete onboarding. Please try again."
-      );
+      console.error("Error details:", {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+      });
+      
+      const errorMessage = error?.message || "Failed to complete onboarding. Please try again.";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSkipStep4 = () => {
+  const handleSkipStep4 = async () => {
     console.log("User skipped Step 4 (Services & Knowledge)");
-    handleComplete();
+    await handleComplete();
   };
 
   const renderStep1 = () => {
@@ -301,6 +296,8 @@ export default function OnboardingScreen() {
   };
 
   const renderStep2 = () => {
+    const characterCountText = `${bio.length}/500`;
+
     return (
       <View style={styles.stepContainer}>
         <Text style={styles.stepTitle}>Tell Us More</Text>
@@ -333,7 +330,7 @@ export default function OnboardingScreen() {
             textAlignVertical="top"
           />
           <Text style={styles.characterCount}>
-            {bio.length}/500
+            {characterCountText}
           </Text>
         </View>
 
@@ -527,7 +524,7 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.skipButton}
+            style={[styles.skipButton, loading && styles.buttonDisabled]}
             onPress={handleSkipStep4}
             disabled={loading}
           >
