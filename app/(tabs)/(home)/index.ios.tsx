@@ -29,16 +29,26 @@ interface Service {
   createdAt: string;
 }
 
+interface Knowledge {
+  id: string;
+  topic: string;
+  createdAt: string;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [services, setServices] = useState<Service[]>([]);
+  const [knowledge, setKnowledge] = useState<Knowledge[]>([]);
   const [notificationsExpanded, setNotificationsExpanded] = useState(true);
+  const [servicesExpanded, setServicesExpanded] = useState(true);
+  const [knowledgeExpanded, setKnowledgeExpanded] = useState(true);
 
   useEffect(() => {
-    console.log('HomeScreen: Loading user profile and services');
+    console.log('HomeScreen: Loading user profile, services, and knowledge');
     loadProfile();
     loadServices();
+    loadKnowledge();
   }, []);
 
   const loadProfile = async () => {
@@ -48,7 +58,6 @@ export default function HomeScreen() {
       const data = await response.json();
       console.log('HomeScreen: Profile loaded successfully', data);
       
-      // Only set profile if it's valid (not an error object)
       if (data && !data.error) {
         setProfile(data);
       } else {
@@ -66,7 +75,6 @@ export default function HomeScreen() {
       const data = await response.json();
       console.log('HomeScreen: Services loaded successfully', data);
       
-      // Only set services if it's a valid array
       if (Array.isArray(data)) {
         setServices(data);
       } else {
@@ -76,6 +84,25 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('HomeScreen: Error loading services:', error);
       setServices([]);
+    }
+  };
+
+  const loadKnowledge = async () => {
+    console.log('HomeScreen: Fetching user knowledge topics');
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/profile/knowledge`);
+      const data = await response.json();
+      console.log('HomeScreen: Knowledge loaded successfully', data);
+      
+      if (Array.isArray(data)) {
+        setKnowledge(data);
+      } else {
+        console.log('HomeScreen: Knowledge API returned non-array data:', data);
+        setKnowledge([]);
+      }
+    } catch (error) {
+      console.error('HomeScreen: Error loading knowledge:', error);
+      setKnowledge([]);
     }
   };
 
@@ -101,7 +128,6 @@ export default function HomeScreen() {
     return firstInitial + lastInitial;
   };
 
-  // Use profile data if available, otherwise use default values
   const displayProfile = profile || {
     username: '@username',
     fullName: 'Your Name',
@@ -116,6 +142,10 @@ export default function HomeScreen() {
   const noNotificationsText = 'No new notifications';
   const allCaughtUpText = "You're all caught up!";
   const myServicesTitle = 'My Services';
+  const knowledgeTitle = 'Knowledge';
+  const allText = 'All';
+  const servicesCountText = services.length > 0 ? `${services.length}` : '0';
+  const knowledgeCountText = knowledge.length > 0 ? `${knowledge.length}` : '0';
 
   return (
     <>
@@ -213,20 +243,69 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.servicesCard}>
-          <Text style={styles.servicesTitle}>{myServicesTitle}</Text>
-          <View style={styles.servicesContent}>
-            {services.length > 0 ? (
-              <View style={styles.servicesList}>
+          <View style={styles.servicesHeader}>
+            <Text style={styles.servicesTitle}>{myServicesTitle}</Text>
+            <TouchableOpacity onPress={() => setServicesExpanded(!servicesExpanded)}>
+              <IconSymbol 
+                ios_icon_name={servicesExpanded ? "chevron.up" : "chevron.down"} 
+                android_material_icon_name={servicesExpanded ? "expand-less" : "expand-more"} 
+                size={24} 
+                color={colors.primary} 
+              />
+            </TouchableOpacity>
+          </View>
+          
+          {servicesExpanded && (
+            <View style={styles.servicesContent}>
+              <View style={styles.filterRow}>
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>{allText}</Text>
+                  <Text style={styles.filterChipCount}>{servicesCountText}</Text>
+                </View>
                 {services.map((service, index) => (
-                  <View key={index} style={styles.serviceItem}>
-                    <Text style={styles.serviceText}>{service.serviceName}</Text>
+                  <View key={index} style={styles.filterChip}>
+                    <Text style={styles.filterChipText}>{service.serviceName}</Text>
                   </View>
                 ))}
               </View>
-            ) : (
-              <Text style={styles.noServicesText}>No services added yet</Text>
-            )}
+              {services.length === 0 && (
+                <Text style={styles.noServicesText}>No services added yet</Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.knowledgeCard}>
+          <View style={styles.knowledgeHeader}>
+            <Text style={styles.knowledgeTitle}>{knowledgeTitle}</Text>
+            <TouchableOpacity onPress={() => setKnowledgeExpanded(!knowledgeExpanded)}>
+              <IconSymbol 
+                ios_icon_name={knowledgeExpanded ? "chevron.up" : "chevron.down"} 
+                android_material_icon_name={knowledgeExpanded ? "expand-less" : "expand-more"} 
+                size={24} 
+                color={colors.primary} 
+              />
+            </TouchableOpacity>
           </View>
+          
+          {knowledgeExpanded && (
+            <View style={styles.knowledgeContent}>
+              <View style={styles.filterRow}>
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>{allText}</Text>
+                  <Text style={styles.filterChipCount}>{knowledgeCountText}</Text>
+                </View>
+                {knowledge.map((item, index) => (
+                  <View key={index} style={styles.filterChip}>
+                    <Text style={styles.filterChipText}>{item.topic}</Text>
+                  </View>
+                ))}
+              </View>
+              {knowledge.length === 0 && (
+                <Text style={styles.noKnowledgeText}>No knowledge topics added yet</Text>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </>
@@ -366,30 +445,71 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
   },
+  servicesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   servicesTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 16,
   },
   servicesContent: {
-    marginTop: 8,
+    marginTop: 16,
   },
-  servicesList: {
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  serviceItem: {
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.card,
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 20,
+    gap: 6,
   },
-  serviceText: {
+  filterChipText: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
   },
+  filterChipCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
   noServicesText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  knowledgeCard: {
+    backgroundColor: colors.backgroundAlt,
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 100,
+  },
+  knowledgeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  knowledgeTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  knowledgeContent: {
+    marginTop: 16,
+  },
+  noKnowledgeText: {
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
