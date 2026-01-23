@@ -3,9 +3,17 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, Switch, Platform, Alert } from "react-native";
 import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
-import Constants from "expo-constants";
+import { authenticatedGet, authenticatedPut } from "@/utils/api";
 
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'http://localhost:3000';
+interface NotificationSettings {
+  friendRequests: boolean;
+  messages: boolean;
+  activityUpdates: boolean;
+}
+
+interface PushStatus {
+  enabled: boolean;
+}
 
 export default function NotificationSettingsScreen() {
   const [friendRequests, setFriendRequests] = useState(true);
@@ -22,8 +30,11 @@ export default function NotificationSettingsScreen() {
   const loadNotificationSettings = async () => {
     console.log('NotificationSettings: Loading notification preferences');
     try {
-      // TODO: Backend Integration - GET /api/settings/notifications
-      // Returns: { friendRequests: boolean, messages: boolean, activityUpdates: boolean }
+      const response = await authenticatedGet<NotificationSettings>('/api/settings/notifications');
+      console.log('NotificationSettings: Loaded settings:', response);
+      setFriendRequests(response.friendRequests);
+      setMessages(response.messages);
+      setActivityUpdates(response.activityUpdates);
       setLoading(false);
     } catch (error) {
       console.error('NotificationSettings: Error loading settings:', error);
@@ -34,9 +45,9 @@ export default function NotificationSettingsScreen() {
   const checkPushNotificationStatus = async () => {
     console.log('NotificationSettings: Checking push notification status');
     try {
-      // TODO: Backend Integration - GET /api/settings/push-status
-      // Returns: { enabled: boolean }
-      setPushEnabled(true); // Placeholder
+      const response = await authenticatedGet<PushStatus>('/api/settings/push-status');
+      console.log('NotificationSettings: Push status:', response);
+      setPushEnabled(response.enabled);
     } catch (error) {
       console.error('NotificationSettings: Error checking push status:', error);
     }
@@ -45,9 +56,8 @@ export default function NotificationSettingsScreen() {
   const updateSetting = async (setting: string, value: boolean) => {
     console.log(`NotificationSettings: Updating ${setting} to ${value}`);
     try {
-      // TODO: Backend Integration - PUT /api/settings/notifications
-      // Body: { setting: string, value: boolean }
-      // Returns: { success: boolean }
+      await authenticatedPut('/api/settings/notifications', { setting, value });
+      console.log('NotificationSettings: Setting updated successfully');
     } catch (error) {
       console.error('NotificationSettings: Error updating setting:', error);
       Alert.alert('Error', 'Failed to update notification setting');

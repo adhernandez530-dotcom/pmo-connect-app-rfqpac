@@ -1,12 +1,10 @@
 
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, ImageSourcePropType } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, ImageSourcePropType, Image } from "react-native";
 import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import Constants from "expo-constants";
-
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'http://localhost:3000';
+import { authenticatedGet, authenticatedDelete } from "@/utils/api";
 
 interface BlockedUser {
   id: string;
@@ -33,14 +31,13 @@ export default function BlockedUsersScreen() {
   const loadBlockedUsers = async () => {
     console.log('BlockedUsers: Loading blocked users');
     try {
-      // TODO: Backend Integration - GET /api/settings/blocked-users
-      // Returns: [{ id, username, fullName, avatarUrl, blockedAt }]
-      
-      // Placeholder data
-      setBlockedUsers([]);
+      const response = await authenticatedGet<BlockedUser[]>('/api/settings/blocked-users');
+      console.log('BlockedUsers: Loaded blocked users:', response);
+      setBlockedUsers(response);
       setLoading(false);
     } catch (error) {
       console.error('BlockedUsers: Error loading blocked users:', error);
+      setBlockedUsers([]);
       setLoading(false);
     }
   };
@@ -60,9 +57,8 @@ export default function BlockedUsersScreen() {
           onPress: async () => {
             console.log('BlockedUsers: Unblocking user:', userId);
             try {
-              // TODO: Backend Integration - DELETE /api/settings/blocked-users/:userId
-              // Returns: { success: boolean }
-              
+              await authenticatedDelete(`/api/settings/blocked-users/${userId}`);
+              console.log('BlockedUsers: User unblocked successfully');
               setBlockedUsers(prev => prev.filter(user => user.id !== userId));
               Alert.alert('Success', `${username} has been unblocked`);
             } catch (error) {
@@ -87,6 +83,7 @@ export default function BlockedUsersScreen() {
   const emptyStateTitle = 'No Blocked Users';
   const emptyStateMessage = 'You have not blocked any users';
   const unblockButtonText = 'Unblock';
+  const loadingText = 'Loading...';
 
   return (
     <>
@@ -100,7 +97,7 @@ export default function BlockedUsersScreen() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>Loading...</Text>
+            <Text style={styles.emptyStateText}>{loadingText}</Text>
           </View>
         ) : blockedUsers.length === 0 ? (
           <View style={styles.emptyState}>
@@ -121,9 +118,16 @@ export default function BlockedUsersScreen() {
               return (
                 <View key={index} style={styles.userItem}>
                   <View style={styles.userLeft}>
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{userInitials}</Text>
-                    </View>
+                    {user.avatarUrl ? (
+                      <Image 
+                        source={resolveImageSource(user.avatarUrl)} 
+                        style={styles.avatar}
+                      />
+                    ) : (
+                      <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>{userInitials}</Text>
+                      </View>
+                    )}
                     <View style={styles.userInfo}>
                       <Text style={styles.userName}>{user.fullName}</Text>
                       <Text style={styles.userUsername}>@{user.username}</Text>
