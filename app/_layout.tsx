@@ -33,6 +33,52 @@ function RootLayoutNav() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [checkingOnboarding, setCheckingOnboarding] = React.useState(false);
+  const [onboardingChecked, setOnboardingChecked] = React.useState(false);
+
+  // Check if user has completed onboarding
+  React.useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      if (!user || loading || checkingOnboarding || onboardingChecked) {
+        return;
+      }
+
+      const inOnboarding = segments[0] === "onboarding";
+      if (inOnboarding) {
+        setOnboardingChecked(true);
+        return;
+      }
+
+      setCheckingOnboarding(true);
+      console.log("RootLayout: Checking onboarding status for user:", user.email);
+
+      try {
+        const Constants = await import("expo-constants");
+        const BACKEND_URL = Constants.default.expoConfig?.extra?.backendUrl || "http://localhost:3000";
+        const { authenticatedGet } = await import("@/utils/api");
+        
+        const profile = await authenticatedGet(`${BACKEND_URL}/api/profile`);
+        console.log("RootLayout: Profile data:", profile);
+
+        if (!profile.onboardingCompleted) {
+          console.log("RootLayout: Onboarding not completed, redirecting to /onboarding");
+          router.replace("/onboarding");
+        } else {
+          console.log("RootLayout: Onboarding completed");
+        }
+        setOnboardingChecked(true);
+      } catch (error) {
+        console.error("RootLayout: Error checking onboarding status:", error);
+        // If we can't check, assume onboarding is needed
+        router.replace("/onboarding");
+        setOnboardingChecked(true);
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [user, loading, segments, checkingOnboarding, onboardingChecked]);
 
   React.useEffect(() => {
     if (loading) {
@@ -41,15 +87,17 @@ function RootLayoutNav() {
     }
 
     const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+    const inOnboarding = segments[0] === "onboarding";
 
-    console.log("RootLayout: Auth check - user:", user?.email, "inAuthGroup:", inAuthGroup, "segments:", segments);
+    console.log("RootLayout: Auth check - user:", user?.email, "inAuthGroup:", inAuthGroup, "inOnboarding:", inOnboarding, "segments:", segments);
 
     if (!user && !inAuthGroup) {
       console.log("RootLayout: User not authenticated, redirecting to /auth");
       router.replace("/auth");
     } else if (user && inAuthGroup) {
-      console.log("RootLayout: User authenticated, redirecting to /(tabs)");
-      router.replace("/(tabs)");
+      console.log("RootLayout: User authenticated, checking onboarding status");
+      // Don't redirect here - let the onboarding check handle it
+      setOnboardingChecked(false); // Reset to trigger onboarding check
     }
   }, [user, loading, segments]);
 

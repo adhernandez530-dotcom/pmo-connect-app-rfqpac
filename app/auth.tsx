@@ -48,11 +48,8 @@ export default function AuthScreen() {
         router.replace("/");
       } else {
         await signUpWithEmail(email, password, name);
-        Alert.alert(
-          "Success",
-          "Account created! Please check your email to verify your account."
-        );
-        router.replace("/");
+        console.log("User registered successfully, redirecting to onboarding");
+        router.replace("/onboarding");
       }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Authentication failed");
@@ -71,7 +68,10 @@ export default function AuthScreen() {
       } else if (provider === "github") {
         await signInWithGitHub();
       }
-      router.replace("/");
+      // Note: Social auth users should also go through onboarding if they haven't completed it
+      // The backend will check onboardingCompleted status
+      console.log("Social auth successful, redirecting to onboarding");
+      router.replace("/onboarding");
     } catch (error: any) {
       Alert.alert("Error", error.message || "Authentication failed");
     } finally {
