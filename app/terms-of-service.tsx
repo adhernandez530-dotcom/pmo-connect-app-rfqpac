@@ -39,7 +39,7 @@ export default function TermsOfServiceScreen() {
   const changesText = 'We reserve the right to modify these Terms of Service at any time. We will notify you of any changes by posting the new Terms of Service on this page and updating the "Last Updated" date. Your continued use of the service after such changes constitutes your acceptance of the new terms.';
   
   const contactTitle = '11. Contact Information';
-  const contactText = 'If you have any questions about these Terms of Service, please contact us through the app or at support@putmeon.com.';
+  const contactText = 'If you have any questions about these Terms of Service, please contact us through the app or atad.';
 
   return (
     <>
