@@ -34,6 +34,12 @@ export default function OnboardingScreen() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [allowContacts, setAllowContacts] = useState(false);
 
+  // Step 4: Services & Knowledge
+  const [services, setServices] = useState<string[]>([]);
+  const [knowledge, setKnowledge] = useState<string[]>([]);
+  const [serviceInput, setServiceInput] = useState("");
+  const [knowledgeInput, setKnowledgeInput] = useState("");
+
   // Validation
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameError, setUsernameError] = useState("");
@@ -98,6 +104,8 @@ export default function OnboardingScreen() {
       setStep(2);
     } else if (step === 2) {
       setStep(3);
+    } else if (step === 3) {
+      setStep(4);
     }
   };
 
@@ -105,6 +113,56 @@ export default function OnboardingScreen() {
     if (step > 1) {
       setStep(step - 1);
     }
+  };
+
+  const handleAddService = () => {
+    const trimmedService = serviceInput.trim();
+    if (!trimmedService) {
+      Alert.alert("Error", "Please enter a service name");
+      return;
+    }
+    if (services.length >= 10) {
+      Alert.alert("Limit Reached", "You can add up to 10 services");
+      return;
+    }
+    if (services.includes(trimmedService)) {
+      Alert.alert("Duplicate", "This service is already added");
+      return;
+    }
+    console.log("Adding service:", trimmedService);
+    setServices([...services, trimmedService]);
+    setServiceInput("");
+  };
+
+  const handleRemoveService = (index: number) => {
+    console.log("Removing service at index:", index);
+    const updatedServices = services.filter((_, i) => i !== index);
+    setServices(updatedServices);
+  };
+
+  const handleAddKnowledge = () => {
+    const trimmedKnowledge = knowledgeInput.trim();
+    if (!trimmedKnowledge) {
+      Alert.alert("Error", "Please enter a knowledge topic");
+      return;
+    }
+    if (knowledge.length >= 10) {
+      Alert.alert("Limit Reached", "You can add up to 10 knowledge topics");
+      return;
+    }
+    if (knowledge.includes(trimmedKnowledge)) {
+      Alert.alert("Duplicate", "This topic is already added");
+      return;
+    }
+    console.log("Adding knowledge topic:", trimmedKnowledge);
+    setKnowledge([...knowledge, trimmedKnowledge]);
+    setKnowledgeInput("");
+  };
+
+  const handleRemoveKnowledge = (index: number) => {
+    console.log("Removing knowledge topic at index:", index);
+    const updatedKnowledge = knowledge.filter((_, i) => i !== index);
+    setKnowledge(updatedKnowledge);
   };
 
   const handleComplete = async () => {
@@ -121,6 +179,8 @@ export default function OnboardingScreen() {
       bio,
       phoneNumber,
       allowContacts,
+      services,
+      knowledge,
     });
 
     try {
@@ -131,6 +191,8 @@ export default function OnboardingScreen() {
         bio: bio || undefined,
         phoneNumber: phoneNumber || undefined,
         allowContacts,
+        services: services.length > 0 ? services : undefined,
+        knowledge: knowledge.length > 0 ? knowledge : undefined,
       });
 
       console.log("Onboarding completed successfully:", response);
@@ -149,6 +211,11 @@ export default function OnboardingScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSkipStep4 = () => {
+    console.log("User skipped Step 4 (Services & Knowledge)");
+    handleComplete();
   };
 
   const renderStep1 = () => {
@@ -325,6 +392,128 @@ export default function OnboardingScreen() {
           <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
             <Text style={styles.secondaryButtonText}>Back</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleNext}>
+            <Text style={styles.primaryButtonText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderStep4 = () => {
+    const servicesCountText = `${services.length}/10`;
+    const knowledgeCountText = `${knowledge.length}/10`;
+
+    return (
+      <View style={styles.stepContainer}>
+        <Text style={styles.stepTitle}>Services & Knowledge</Text>
+        <Text style={styles.stepDescription}>
+          Share what you offer and what you know (Optional)
+        </Text>
+
+        <View style={styles.inputContainer}>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Services You Provide</Text>
+            <Text style={styles.countText}>{servicesCountText}</Text>
+          </View>
+          <View style={styles.addInputRow}>
+            <TextInput
+              style={[styles.input, styles.addInput]}
+              placeholder="e.g., Web Design, Photography"
+              value={serviceInput}
+              onChangeText={setServiceInput}
+              autoCapitalize="words"
+              maxLength={50}
+              onSubmitEditing={handleAddService}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={[styles.addButton, services.length >= 10 && styles.buttonDisabled]}
+              onPress={handleAddService}
+              disabled={services.length >= 10}
+            >
+              <IconSymbol
+                ios_icon_name="plus"
+                android_material_icon_name="add"
+                size={24}
+                color="#fff"
+              />
+            </TouchableOpacity>
+          </View>
+          {services.length > 0 && (
+            <View style={styles.tagContainer}>
+              {services.map((service, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{service}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveService(index)}
+                    style={styles.tagRemove}
+                  >
+                    <IconSymbol
+                      ios_icon_name="xmark"
+                      android_material_icon_name="close"
+                      size={14}
+                      color={colors.text}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.inputContainer}>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Knowledge Topics</Text>
+            <Text style={styles.countText}>{knowledgeCountText}</Text>
+          </View>
+          <View style={styles.addInputRow}>
+            <TextInput
+              style={[styles.input, styles.addInput]}
+              placeholder="e.g., React Native, Marketing"
+              value={knowledgeInput}
+              onChangeText={setKnowledgeInput}
+              autoCapitalize="words"
+              maxLength={50}
+              onSubmitEditing={handleAddKnowledge}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={[styles.addButton, knowledge.length >= 10 && styles.buttonDisabled]}
+              onPress={handleAddKnowledge}
+              disabled={knowledge.length >= 10}
+            >
+              <IconSymbol
+                ios_icon_name="plus"
+                android_material_icon_name="add"
+                size={24}
+                color="#fff"
+              />
+            </TouchableOpacity>
+          </View>
+          {knowledge.length > 0 && (
+            <View style={styles.tagContainer}>
+              {knowledge.map((topic, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{topic}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveKnowledge(index)}
+                    style={styles.tagRemove}
+                  >
+                    <IconSymbol
+                      ios_icon_name="xmark"
+                      android_material_icon_name="close"
+                      size={14}
+                      color={colors.text}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.buttonColumn}>
           <TouchableOpacity
             style={[styles.primaryButton, loading && styles.buttonDisabled]}
             onPress={handleComplete}
@@ -336,12 +525,29 @@ export default function OnboardingScreen() {
               <Text style={styles.primaryButtonText}>Complete</Text>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkipStep4}
+            disabled={loading}
+          >
+            <Text style={styles.skipButtonText}>Skip for now</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.secondaryButton, styles.backButtonFullWidth]}
+            onPress={handleBack}
+            disabled={loading}
+          >
+            <Text style={styles.secondaryButtonText}>Back</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  const progressPercentage = (step / 3) * 100;
+  const progressPercentage = (step / 4) * 100;
+  const stepText = `Step ${step} of 4`;
 
   return (
     <>
@@ -374,13 +580,14 @@ export default function OnboardingScreen() {
               />
             </View>
             <Text style={styles.progressText}>
-              Step {step} of 3
+              {stepText}
             </Text>
           </View>
 
           {step === 1 && renderStep1()}
           {step === 2 && renderStep2()}
           {step === 3 && renderStep3()}
+          {step === 4 && renderStep4()}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
@@ -437,6 +644,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text,
     marginBottom: 8,
+  },
+  labelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  countText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "600",
   },
   input: {
     height: 50,
@@ -507,6 +725,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
   },
+  addInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  addInput: {
+    flex: 1,
+    marginRight: 8,
+  },
+  addButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tagContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 12,
+  },
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingLeft: 16,
+    paddingRight: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagText: {
+    fontSize: 14,
+    color: colors.text,
+    marginRight: 8,
+  },
+  tagRemove: {
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   primaryButton: {
     height: 50,
     backgroundColor: colors.primary,
@@ -537,6 +800,24 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     marginTop: 16,
+  },
+  buttonColumn: {
+    marginTop: 16,
+  },
+  skipButton: {
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  skipButtonText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  backButtonFullWidth: {
+    marginRight: 0,
+    marginTop: 12,
   },
   buttonDisabled: {
     opacity: 0.5,
