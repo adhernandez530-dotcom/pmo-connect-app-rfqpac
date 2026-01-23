@@ -508,12 +508,12 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   primaryButton: {
-    flex: 1,
     height: 50,
     backgroundColor: colors.primary,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 32,
   },
   primaryButtonText: {
     color: "#fff",
