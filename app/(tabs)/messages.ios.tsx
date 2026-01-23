@@ -67,8 +67,7 @@ export default function MessagesScreen() {
 
   const handleConversationPress = (userId: string) => {
     console.log('MessagesScreen: User tapped conversation:', userId);
-    // TODO: Navigate to chat screen
-    // router.push(`/chat/${userId}`);
+    router.push(`/chat/${userId}`);
   };
 
   const handleLongPress = (conversation: Conversation) => {

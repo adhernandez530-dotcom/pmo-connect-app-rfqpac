@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Platform } from "react-native";
+import { useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import Constants from "expo-constants";
@@ -21,6 +22,7 @@ type FilterType = 'friends' | 'put_me_on' | 'anyone';
 type LocationFilter = 'nearby' | 'anywhere';
 
 export default function SearchScreen() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
   const [popularSkills, setPopularSkills] = useState<string[]>([]);
@@ -120,7 +122,7 @@ export default function SearchScreen() {
 
   const handleUserPress = (user: UserResult) => {
     console.log('SearchScreen: User tapped profile:', user.username);
-    // TODO: Navigate to user profile screen
+    router.push(`/user/${user.id}`);
   };
 
   const getInitials = (name: string) => {

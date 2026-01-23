@@ -220,3 +220,34 @@ export const authenticatedDelete = async <T = any>(endpoint: string, data: any =
     body: JSON.stringify(data),
   });
 };
+
+/**
+ * Authenticated fetch helper that returns the Response object
+ * Useful when you need to check response.ok or handle errors manually
+ *
+ * @param url - Full URL or endpoint path
+ * @param options - Fetch options (method, headers, body, etc.)
+ * @returns Response object
+ * @throws Error if token not found
+ */
+export const authenticatedFetch = async (
+  url: string,
+  options?: RequestInit
+): Promise<Response> => {
+  const token = await getBearerToken();
+
+  if (!token) {
+    throw new Error("Authentication token not found. Please sign in.");
+  }
+
+  const fullUrl = url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
+  console.log("[API] Authenticated fetch:", fullUrl, options?.method || "GET");
+
+  return fetch(fullUrl, {
+    ...options,
+    headers: {
+      ...options?.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
