@@ -44,12 +44,14 @@ export default function HomeScreen() {
   const [notificationsExpanded, setNotificationsExpanded] = useState(true);
   const [servicesExpanded, setServicesExpanded] = useState(true);
   const [knowledgeExpanded, setKnowledgeExpanded] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     console.log('HomeScreen: Loading user profile, services, and knowledge');
     loadProfile();
     loadServices();
     loadKnowledge();
+    loadUnreadCount();
   }, []);
 
   const loadProfile = async () => {
@@ -121,6 +123,17 @@ export default function HomeScreen() {
     }
   };
 
+  const loadUnreadCount = async () => {
+    try {
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/notifications/unread-count`);
+      const data = await response.json();
+      console.log('HomeScreen iOS: Unread notification count:', data.count);
+      setUnreadCount(data.count || 0);
+    } catch (error) {
+      console.error('HomeScreen iOS: Error loading unread count:', error);
+    }
+  };
+
   const handleEditProfile = () => {
     console.log('HomeScreen: User tapped Edit Profile button');
     router.push('/edit-profile');
@@ -176,12 +189,21 @@ export default function HomeScreen() {
           headerRight: () => (
             <View style={styles.headerIcons}>
               <TouchableOpacity onPress={handleNotificationPress} style={styles.iconButton}>
-                <IconSymbol 
-                  ios_icon_name="bell.fill" 
-                  android_material_icon_name="notifications" 
-                  size={24} 
-                  color={colors.primary} 
-                />
+                <View style={styles.notificationIconContainer}>
+                  <IconSymbol 
+                    ios_icon_name="bell.fill" 
+                    android_material_icon_name="notifications" 
+                    size={24} 
+                    color={colors.primary} 
+                  />
+                  {unreadCount > 0 && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationBadgeText}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleSettingsPress} style={styles.iconButton}>
                 <IconSymbol 
@@ -349,6 +371,28 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 4,
+  },
+  notificationIconContainer: {
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   profileCard: {
     backgroundColor: colors.backgroundAlt,

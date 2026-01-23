@@ -21,8 +21,11 @@ import Animated, {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Href } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
+import { authenticatedFetch } from '@/utils/api';
+import Constants from 'expo-constants';
 
 const { width: screenWidth } = Dimensions.get('window');
+const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
 export interface TabBarItem {
   name: string;
@@ -48,6 +51,7 @@ export default function FloatingTabBar({
   const pathname = usePathname();
   const theme = useTheme();
   const animatedValue = useSharedValue(0);
+  const [unreadCount, setUnreadCount] = React.useState(0);
 
   // Improved active tab detection with better path matching
   const activeTabIndex = React.useMemo(() => {
@@ -94,6 +98,30 @@ export default function FloatingTabBar({
       });
     }
   }, [activeTabIndex, animatedValue]);
+
+  // Load unread notification count
+  React.useEffect(() => {
+    console.log('FloatingTabBar: Loading unread notification count');
+    loadUnreadCount();
+    
+    // Poll for updates every 30 seconds
+    const interval = setInterval(() => {
+      loadUnreadCount();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadUnreadCount = async () => {
+    try {
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/notifications/unread-count`);
+      const data = await response.json();
+      console.log('FloatingTabBar: Unread notification count:', data.count);
+      setUnreadCount(data.count || 0);
+    } catch (error) {
+      console.error('FloatingTabBar: Error loading unread count:', error);
+    }
+  };
 
   const handleTabPress = (route: Href) => {
     router.push(route);
@@ -173,6 +201,7 @@ export default function FloatingTabBar({
           <View style={styles.tabsContainer}>
             {tabs.map((tab, index) => {
               const isActive = activeTabIndex === index;
+              const showBadge = tab.name === 'messages' && unreadCount > 0;
 
               return (
                 <React.Fragment key={index}>
@@ -183,12 +212,21 @@ export default function FloatingTabBar({
                   activeOpacity={0.7}
                 >
                   <View key={index} style={styles.tabContent}>
-                    <IconSymbol
-                      android_material_icon_name={tab.icon}
-                      ios_icon_name={tab.icon}
-                      size={24}
-                      color={isActive ? colors.primary : colors.textSecondary}
-                    />
+                    <View style={styles.iconContainer}>
+                      <IconSymbol
+                        android_material_icon_name={tab.icon}
+                        ios_icon_name={tab.icon}
+                        size={24}
+                        color={isActive ? colors.primary : colors.textSecondary}
+                      />
+                      {showBadge && (
+                        <View style={styles.notificationBadge}>
+                          <Text style={styles.notificationBadgeText}>
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                     <Text
                       style={[
                         styles.tabLabel,
@@ -257,6 +295,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
+  },
+  iconContainer: {
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.dark ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   tabLabel: {
     fontSize: 9,
