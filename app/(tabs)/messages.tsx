@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -44,7 +45,12 @@ export default function MessagesScreen() {
       const endpoint = showArchived
         ? `${BACKEND_URL}/api/messages/archived`
         : `${BACKEND_URL}/api/messages/conversations`;
-      const response = await fetch(endpoint);
+      const response = await authenticatedFetch(endpoint);
+      if (!response.ok) {
+        console.log('MessagesScreen: API returned error status:', response.status);
+        setConversations([]);
+        return;
+      }
       const data = await response.json();
       console.log('MessagesScreen: Conversations loaded successfully', data);
       
@@ -69,8 +75,9 @@ export default function MessagesScreen() {
   const handleMarkRead = async (userId: string) => {
     console.log('MessagesScreen: Marking conversation as read:', userId);
     try {
-      await fetch(`${BACKEND_URL}/api/messages/${userId}/read`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/read`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       loadConversations();
@@ -82,8 +89,9 @@ export default function MessagesScreen() {
   const handleMarkUnread = async (userId: string) => {
     console.log('MessagesScreen: Marking conversation as unread:', userId);
     try {
-      await fetch(`${BACKEND_URL}/api/messages/${userId}/unread`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/unread`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       loadConversations();
@@ -95,8 +103,9 @@ export default function MessagesScreen() {
   const handleMute = async (userId: string) => {
     console.log('MessagesScreen: Muting conversation:', userId);
     try {
-      await fetch(`${BACKEND_URL}/api/messages/${userId}/mute`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/mute`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       loadConversations();
@@ -108,7 +117,7 @@ export default function MessagesScreen() {
   const handleDelete = async (userId: string) => {
     console.log('MessagesScreen: Deleting conversation:', userId);
     try {
-      await fetch(`${BACKEND_URL}/api/messages/${userId}`, { method: 'DELETE' });
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}`, { method: 'DELETE' });
       loadConversations();
     } catch (error) {
       console.error('MessagesScreen: Error deleting conversation:', error);
@@ -118,8 +127,9 @@ export default function MessagesScreen() {
   const handleArchive = async (userId: string) => {
     console.log('MessagesScreen: Archiving conversation:', userId);
     try {
-      await fetch(`${BACKEND_URL}/api/messages/${userId}/archive`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/archive`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       loadConversations();

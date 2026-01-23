@@ -5,6 +5,7 @@ import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
+import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -54,7 +55,11 @@ export default function HomeScreen() {
   const loadProfile = async () => {
     console.log('HomeScreen: Fetching user profile');
     try {
-      const response = await fetch(`${BACKEND_URL}/api/users/me`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me`);
+      if (!response.ok) {
+        console.log('HomeScreen: Profile API returned error status:', response.status);
+        return;
+      }
       const data = await response.json();
       console.log('HomeScreen: Profile loaded successfully', data);
       
@@ -71,7 +76,12 @@ export default function HomeScreen() {
   const loadServices = async () => {
     console.log('HomeScreen: Fetching user services');
     try {
-      const response = await fetch(`${BACKEND_URL}/api/profile/services`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/services`);
+      if (!response.ok) {
+        console.log('HomeScreen: Services API returned error status:', response.status);
+        setServices([]);
+        return;
+      }
       const data = await response.json();
       console.log('HomeScreen: Services loaded successfully', data);
       
@@ -90,7 +100,12 @@ export default function HomeScreen() {
   const loadKnowledge = async () => {
     console.log('HomeScreen: Fetching user knowledge topics');
     try {
-      const response = await fetch(`${BACKEND_URL}/api/profile/knowledge`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/knowledge`);
+      if (!response.ok) {
+        console.log('HomeScreen: Knowledge API returned error status:', response.status);
+        setKnowledge([]);
+        return;
+      }
       const data = await response.json();
       console.log('HomeScreen: Knowledge loaded successfully', data);
       

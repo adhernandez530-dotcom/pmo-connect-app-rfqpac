@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import Constants from "expo-constants";
+import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -33,7 +34,22 @@ export default function SearchScreen() {
   const loadPopularSkills = useCallback(async () => {
     console.log('SearchScreen: Fetching popular skills');
     try {
-      const response = await fetch(`${BACKEND_URL}/api/search/skills?popular=true`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/search/skills?popular=true`);
+      if (!response.ok) {
+        console.log('SearchScreen: API returned error status:', response.status);
+        // Fallback to default skills if API fails
+        setPopularSkills([
+          'Project Management',
+          'DJ Services',
+          'Cooking',
+          'Web Development',
+          'Graphic Design',
+          'Photography',
+          'Music Production',
+          'Video Editing',
+        ]);
+        return;
+      }
       const data = await response.json();
       console.log('SearchScreen: Popular skills response:', data);
       
@@ -82,7 +98,13 @@ export default function SearchScreen() {
         location: locationFilter,
       });
       
-      const response = await fetch(`${BACKEND_URL}/api/search/users?${queryParams.toString()}`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/search/users?${queryParams.toString()}`);
+      if (!response.ok) {
+        console.log('SearchScreen: API returned error status:', response.status);
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
       const data = await response.json();
       console.log('SearchScreen: Search results response:', data);
       

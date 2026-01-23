@@ -4,6 +4,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, 
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import Constants from "expo-constants";
+import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -42,7 +43,13 @@ export default function FeedScreen() {
   const loadFeed = useCallback(async () => {
     try {
       console.log('FeedScreen: Fetching feed from backend');
-      const response = await fetch(`${BACKEND_URL}/api/feed?sort=${sortBy}`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/feed?sort=${sortBy}`);
+      if (!response.ok) {
+        console.log('FeedScreen: API returned error status:', response.status);
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
       const data = await response.json();
       console.log('FeedScreen: Feed response received:', data);
       
@@ -73,9 +80,13 @@ export default function FeedScreen() {
 
     try {
       if (post.isLiked) {
-        await fetch(`${BACKEND_URL}/api/posts/${postId}/like`, { method: 'DELETE' });
+        await authenticatedFetch(`${BACKEND_URL}/api/posts/${postId}/like`, { method: 'DELETE' });
       } else {
-        await fetch(`${BACKEND_URL}/api/posts/${postId}/like`, { method: 'POST', body: JSON.stringify({}) });
+        await authenticatedFetch(`${BACKEND_URL}/api/posts/${postId}/like`, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}) 
+        });
       }
       loadFeed();
     } catch (error) {
@@ -91,7 +102,7 @@ export default function FeedScreen() {
   const handleRepost = async (postId: string) => {
     console.log('FeedScreen: User tapped repost on post:', postId);
     try {
-      await fetch(`${BACKEND_URL}/api/posts/${postId}/repost`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/posts/${postId}/repost`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})

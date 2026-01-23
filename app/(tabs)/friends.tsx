@@ -4,6 +4,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, 
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import Constants from "expo-constants";
+import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -46,7 +47,13 @@ export default function FriendsScreen() {
   const loadFriends = async () => {
     try {
       console.log('FriendsScreen: Fetching friends from backend');
-      const response = await fetch(`${BACKEND_URL}/api/friends`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/friends`);
+      if (!response.ok) {
+        console.log('FriendsScreen: API returned error status:', response.status);
+        setFriends([]);
+        setLoading(false);
+        return;
+      }
       const data = await response.json();
       console.log('FriendsScreen: Friends response:', data);
       
@@ -67,7 +74,12 @@ export default function FriendsScreen() {
   const loadFriendRequests = async () => {
     try {
       console.log('FriendsScreen: Fetching friend requests from backend');
-      const response = await fetch(`${BACKEND_URL}/api/friends/requests`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/friends/requests`);
+      if (!response.ok) {
+        console.log('FriendsScreen: API returned error status:', response.status);
+        setFriendRequests([]);
+        return;
+      }
       const data = await response.json();
       console.log('FriendsScreen: Friend requests response:', data);
       
@@ -86,8 +98,9 @@ export default function FriendsScreen() {
   const handleAcceptRequest = async (userId: string) => {
     console.log('FriendsScreen: User accepted friend request from:', userId);
     try {
-      await fetch(`${BACKEND_URL}/api/friends/accept/${userId}`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/friends/accept/${userId}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       loadFriendRequests();
@@ -100,8 +113,9 @@ export default function FriendsScreen() {
   const handleRejectRequest = async (userId: string) => {
     console.log('FriendsScreen: User rejected friend request from:', userId);
     try {
-      await fetch(`${BACKEND_URL}/api/friends/reject/${userId}`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/friends/reject/${userId}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
       loadFriendRequests();
