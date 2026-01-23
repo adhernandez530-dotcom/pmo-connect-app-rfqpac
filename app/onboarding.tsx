@@ -15,7 +15,7 @@ import {
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { authenticatedPost, authenticatedGet } from "@/utils/api";
+import { apiPost, apiGet } from "@/utils/api";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -52,7 +52,7 @@ export default function OnboardingScreen() {
     setUsernameError("");
 
     try {
-      const response = await authenticatedGet(
+      const response = await apiGet(
         `/api/onboarding/check-username/${usernameToCheck}`
       );
 
@@ -98,16 +98,20 @@ export default function OnboardingScreen() {
         Alert.alert("Error", "Please choose a different username");
         return;
       }
+      console.log("User completed Step 1 - moving to Step 2");
       setStep(2);
     } else if (step === 2) {
+      console.log("User completed Step 2 - moving to Step 3");
       setStep(3);
     } else if (step === 3) {
+      console.log("User completed Step 3 - moving to Step 4");
       setStep(4);
     }
   };
 
   const handleBack = () => {
     if (step > 1) {
+      console.log(`User going back from Step ${step} to Step ${step - 1}`);
       setStep(step - 1);
     }
   };
@@ -184,13 +188,16 @@ export default function OnboardingScreen() {
     console.log("Completing onboarding with data:", onboardingData);
 
     try {
-      const response = await authenticatedPost(`/api/onboarding/complete`, onboardingData);
+      const response = await apiPost(`/api/onboarding/complete`, onboardingData);
 
       console.log("Onboarding completed successfully:", response);
       Alert.alert("Welcome!", "Your profile has been set up successfully", [
         {
           text: "Get Started",
-          onPress: () => router.replace("/(tabs)"),
+          onPress: () => {
+            console.log("User tapped Get Started - navigating to home");
+            router.replace("/(tabs)");
+          },
         },
       ]);
     } catch (error: any) {
