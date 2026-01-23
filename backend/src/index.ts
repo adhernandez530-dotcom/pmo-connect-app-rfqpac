@@ -18,6 +18,7 @@ import { registerMessagesExtendedRoutes } from './routes/messages-extended.js';
 import { registerFriendsExtendedRoutes } from './routes/friends-extended.js';
 import { registerNotificationsExtendedRoutes } from './routes/notifications-extended.js';
 import { registerAccountRoutes } from './routes/account.js';
+import { registerGroupChatRoutes } from './routes/group-chat.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -47,6 +48,7 @@ registerSearchRoutes(app);
 registerNotificationsRoutes(app);
 registerNotificationsExtendedRoutes(app);
 registerAccountRoutes(app);
+registerGroupChatRoutes(app);
 
 await app.run();
 app.logger.info('PUT ME ON app running successfully');
