@@ -33,7 +33,7 @@ export default function PrivacyPolicyScreen() {
   const changesText = 'We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.';
   
   const contactTitle = '8. Contact Us';
-  const contactText = 'If you have any questions about this Privacy Policy, please contact us through the app or at adhernandez.';
+  const contactText = 'If you have any questions about this Privacy Policy, please contact us through the app or at adhernandez530@gmail.com.';
 
   return (
     <>
