@@ -43,13 +43,12 @@ export default function SettingsScreen() {
               // Sign out from auth context (clears local session)
               await signOut();
               
-              Alert.alert('Success', 'You have been logged out successfully');
-              // Navigate to auth screen
+              console.log('SettingsScreen: Navigating to auth screen');
+              // Navigate directly to auth screen
               router.replace('/auth');
             } catch (error) {
               console.error('SettingsScreen: Error logging out:', error);
               Alert.alert('Error', 'Failed to log out. Please try again.');
-            } finally {
               setIsLoggingOut(false);
             }
           },
