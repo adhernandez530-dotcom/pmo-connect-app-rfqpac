@@ -17,6 +17,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { colors } from "@/styles/commonStyles";
 // Note: Error logging is auto-initialized via index.ts import
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -72,10 +73,10 @@ export default function RootLayout() {
     ...DarkTheme,
     colors: {
       primary: "rgb(10, 132, 255)", // System Blue (Dark Mode)
-      background: "rgb(1, 1, 1)", // True black background for OLED displays
-      card: "rgb(28, 28, 30)", // Dark card/surface color
-      text: "rgb(255, 255, 255)", // White text for dark mode
-      border: "rgb(44, 44, 46)", // Dark gray for separators/borders
+      background: colors.background, // Use app background color
+      card: colors.backgroundAlt, // Use app card color
+      text: colors.text, // Use app text color
+      border: colors.border, // Use app border color
       notification: "rgb(255, 69, 58)", // System Red (Dark Mode)
     },
   };
@@ -88,19 +89,41 @@ export default function RootLayout() {
           <AuthProvider>
             <WidgetProvider>
               <GestureHandlerRootView>
-              <Stack>
+              <Stack
+                screenOptions={{
+                  headerStyle: {
+                    backgroundColor: colorScheme === "dark" ? colors.background : "rgb(255, 255, 255)",
+                  },
+                  headerTintColor: colorScheme === "dark" ? colors.text : "rgb(0, 0, 0)",
+                  contentStyle: {
+                    backgroundColor: colorScheme === "dark" ? colors.background : "rgb(242, 242, 247)",
+                  },
+                }}
+              >
                 {/* Auth screens */}
                 <Stack.Screen name="auth" options={{ headerShown: false }} />
                 <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
                 <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
                 {/* Main app with tabs */}
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                {/* Chat screen */}
+                <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+                {/* User profile screen */}
+                <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
                 {/* Notifications screen */}
                 <Stack.Screen name="notifications" options={{ headerShown: false }} />
                 {/* Edit profile screen */}
                 <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
                 {/* Settings screen */}
                 <Stack.Screen name="settings" options={{ headerShown: false }} />
+                {/* Privacy settings screen */}
+                <Stack.Screen name="privacy-settings" options={{ headerShown: false }} />
+                {/* Notification settings screen */}
+                <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+                {/* Permissions settings screen */}
+                <Stack.Screen name="permissions-settings" options={{ headerShown: false }} />
+                {/* Blocked users screen */}
+                <Stack.Screen name="blocked-users" options={{ headerShown: false }} />
                 {/* Privacy Policy screen */}
                 <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
                 {/* Terms of Service screen */}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Alert } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Alert, Switch } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
@@ -31,8 +31,10 @@ export default function PrivacySettingsScreen() {
   const loadPrivacySettings = async () => {
     console.log('PrivacySettings: Loading privacy settings');
     try {
-      // TODO: Backend Integration - GET /api/settings/privacy
-      // Returns: { profileVisibility, messagePermission, servicesVisibility, friendsListVisibility, tagPermission, commentPermission }
+      // Note: Backend endpoint not yet implemented
+      // When implemented, use: GET /api/settings/privacy or GET /api/users/me/privacy
+      // Expected response: { profileVisibility, messagePermission, servicesVisibility, friendsListVisibility, tagPermission, commentPermission }
+      // For now, using default values set in state
     } catch (error) {
       console.error('PrivacySettings: Error loading settings:', error);
     }
@@ -41,145 +43,58 @@ export default function PrivacySettingsScreen() {
   const updatePrivacySetting = async (setting: string, value: string) => {
     console.log(`PrivacySettings: Updating ${setting} to ${value}`);
     try {
-      // TODO: Backend Integration - PUT /api/settings/privacy
-      // Body: { setting: string, value: string }
-      // Returns: { success: boolean }
+      // Note: Backend endpoint not yet implemented
+      // When implemented, use: PUT /api/settings/privacy or PUT /api/users/me/privacy
+      // Body: { setting: string, value: string } or { [setting]: value }
+      // Expected response: { success: boolean }
+      // For now, settings are only stored locally in component state
+      console.log('PrivacySettings: Setting updated locally (backend integration pending)');
     } catch (error) {
       console.error('PrivacySettings: Error updating setting:', error);
       Alert.alert('Error', 'Failed to update privacy setting');
     }
   };
 
-  const handleProfileVisibilityPress = () => {
-    console.log('PrivacySettings: User tapped Profile Visibility');
-    const options = ['Public', 'Private'];
-    const values: ProfileVisibility[] = ['public', 'private'];
-    
-    Alert.alert(
-      'Profile Visibility',
-      'Choose who can see your profile',
-      [
-        ...options.map((option, index) => ({
-          text: option,
-          onPress: () => {
-            const newValue = values[index];
-            setProfileVisibility(newValue);
-            updatePrivacySetting('profileVisibility', newValue);
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleProfileVisibilityToggle = (value: boolean) => {
+    console.log('PrivacySettings: User toggled Profile Visibility');
+    const newValue: ProfileVisibility = value ? 'public' : 'private';
+    setProfileVisibility(newValue);
+    updatePrivacySetting('profileVisibility', newValue);
   };
 
-  const handleMessagePermissionPress = () => {
-    console.log('PrivacySettings: User tapped Message Permission');
-    const options = ['Anyone', 'Mutual Friends', 'Friends Only'];
-    const values: MessagePermission[] = ['anyone', 'mutual_friends', 'friends_only'];
-    
-    Alert.alert(
-      'Who Can Message Me',
-      'Choose who can send you messages',
-      [
-        ...options.map((option, index) => ({
-          text: option,
-          onPress: () => {
-            const newValue = values[index];
-            setMessagePermission(newValue);
-            updatePrivacySetting('messagePermission', newValue);
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleMessagePermissionToggle = (value: boolean) => {
+    console.log('PrivacySettings: User toggled Message Permission');
+    const newValue: MessagePermission = value ? 'anyone' : 'friends_only';
+    setMessagePermission(newValue);
+    updatePrivacySetting('messagePermission', newValue);
   };
 
-  const handleServicesVisibilityPress = () => {
-    console.log('PrivacySettings: User tapped Services Visibility');
-    const options = ['Everyone', 'Friends Only', 'Only Me'];
-    const values: ServicesVisibility[] = ['everyone', 'friends_only', 'only_me'];
-    
-    Alert.alert(
-      'Who Can See My Services',
-      'Choose who can see your services',
-      [
-        ...options.map((option, index) => ({
-          text: option,
-          onPress: () => {
-            const newValue = values[index];
-            setServicesVisibility(newValue);
-            updatePrivacySetting('servicesVisibility', newValue);
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleServicesVisibilityToggle = (value: boolean) => {
+    console.log('PrivacySettings: User toggled Services Visibility');
+    const newValue: ServicesVisibility = value ? 'everyone' : 'only_me';
+    setServicesVisibility(newValue);
+    updatePrivacySetting('servicesVisibility', newValue);
   };
 
-  const handleFriendsListVisibilityPress = () => {
-    console.log('PrivacySettings: User tapped Friends List Visibility');
-    const options = ['Everyone', 'Friends Only', 'Only Me'];
-    const values: FriendsListVisibility[] = ['everyone', 'friends_only', 'only_me'];
-    
-    Alert.alert(
-      'Who Can See My Friends List',
-      'Choose who can see your friends list',
-      [
-        ...options.map((option, index) => ({
-          text: option,
-          onPress: () => {
-            const newValue = values[index];
-            setFriendsListVisibility(newValue);
-            updatePrivacySetting('friendsListVisibility', newValue);
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleFriendsListVisibilityToggle = (value: boolean) => {
+    console.log('PrivacySettings: User toggled Friends List Visibility');
+    const newValue: FriendsListVisibility = value ? 'everyone' : 'only_me';
+    setFriendsListVisibility(newValue);
+    updatePrivacySetting('friendsListVisibility', newValue);
   };
 
-  const handleTagPermissionPress = () => {
-    console.log('PrivacySettings: User tapped Tag Permission');
-    const options = ['Anyone', 'Friends Only', 'No One'];
-    const values: TagPermission[] = ['anyone', 'friends_only', 'no_one'];
-    
-    Alert.alert(
-      'Who Can Tag Me',
-      'Choose who can tag you in posts',
-      [
-        ...options.map((option, index) => ({
-          text: option,
-          onPress: () => {
-            const newValue = values[index];
-            setTagPermission(newValue);
-            updatePrivacySetting('tagPermission', newValue);
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleTagPermissionToggle = (value: boolean) => {
+    console.log('PrivacySettings: User toggled Tag Permission');
+    const newValue: TagPermission = value ? 'anyone' : 'no_one';
+    setTagPermission(newValue);
+    updatePrivacySetting('tagPermission', newValue);
   };
 
-  const handleCommentPermissionPress = () => {
-    console.log('PrivacySettings: User tapped Comment Permission');
-    const options = ['Anyone', 'Friends Only', 'No One'];
-    const values: CommentPermission[] = ['anyone', 'friends_only', 'no_one'];
-    
-    Alert.alert(
-      'Who Can Comment on My Posts',
-      'Choose who can comment on your posts',
-      [
-        ...options.map((option, index) => ({
-          text: option,
-          onPress: () => {
-            const newValue = values[index];
-            setCommentPermission(newValue);
-            updatePrivacySetting('commentPermission', newValue);
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+  const handleCommentPermissionToggle = (value: boolean) => {
+    console.log('PrivacySettings: User toggled Comment Permission');
+    const newValue: CommentPermission = value ? 'anyone' : 'no_one';
+    setCommentPermission(newValue);
+    updatePrivacySetting('commentPermission', newValue);
   };
 
   const handleBlockedUsersPress = () => {
@@ -187,71 +102,21 @@ export default function PrivacySettingsScreen() {
     router.push('/blocked-users');
   };
 
-  const getProfileVisibilityText = () => {
-    return profileVisibility === 'public' ? 'Public' : 'Private';
-  };
-
-  const getMessagePermissionText = () => {
-    const textMap: Record<MessagePermission, string> = {
-      anyone: 'Anyone',
-      mutual_friends: 'Mutual Friends',
-      friends_only: 'Friends Only',
-    };
-    return textMap[messagePermission];
-  };
-
-  const getServicesVisibilityText = () => {
-    const textMap: Record<ServicesVisibility, string> = {
-      everyone: 'Everyone',
-      friends_only: 'Friends Only',
-      only_me: 'Only Me',
-    };
-    return textMap[servicesVisibility];
-  };
-
-  const getFriendsListVisibilityText = () => {
-    const textMap: Record<FriendsListVisibility, string> = {
-      everyone: 'Everyone',
-      friends_only: 'Friends Only',
-      only_me: 'Only Me',
-    };
-    return textMap[friendsListVisibility];
-  };
-
-  const getTagPermissionText = () => {
-    const textMap: Record<TagPermission, string> = {
-      anyone: 'Anyone',
-      friends_only: 'Friends Only',
-      no_one: 'No One',
-    };
-    return textMap[tagPermission];
-  };
-
-  const getCommentPermissionText = () => {
-    const textMap: Record<CommentPermission, string> = {
-      anyone: 'Anyone',
-      friends_only: 'Friends Only',
-      no_one: 'No One',
-    };
-    return textMap[commentPermission];
-  };
-
   const privacySettingsTitle = 'Privacy Settings';
-  const profileVisibilityLabel = 'Profile Visibility';
-  const messagePermissionLabel = 'Who Can Message Me';
-  const servicesVisibilityLabel = 'Who Can See My Services';
-  const friendsListVisibilityLabel = 'Who Can See My Friends List';
-  const tagPermissionLabel = 'Who Can Tag Me';
-  const commentPermissionLabel = 'Who Can Comment on My Posts';
+  const profileVisibilityLabel = 'Public Profile';
+  const profileVisibilityDesc = 'Allow anyone to see your profile';
+  const messagePermissionLabel = 'Allow Messages from Anyone';
+  const messagePermissionDesc = 'Let anyone send you messages';
+  const servicesVisibilityLabel = 'Show Services to Everyone';
+  const servicesVisibilityDesc = 'Make your services visible to all users';
+  const friendsListVisibilityLabel = 'Show Friends List to Everyone';
+  const friendsListVisibilityDesc = 'Make your friends list public';
+  const tagPermissionLabel = 'Allow Anyone to Tag Me';
+  const tagPermissionDesc = 'Let anyone tag you in posts';
+  const commentPermissionLabel = 'Allow Anyone to Comment';
+  const commentPermissionDesc = 'Let anyone comment on your posts';
   const blockedUsersLabel = 'Blocked Users';
   const blockedUsersDesc = 'Manage users you have blocked';
-
-  const profileVisibilityValue = getProfileVisibilityText();
-  const messagePermissionValue = getMessagePermissionText();
-  const servicesVisibilityValue = getServicesVisibilityText();
-  const friendsListVisibilityValue = getFriendsListVisibilityText();
-  const tagPermissionValue = getTagPermissionText();
-  const commentPermissionValue = getCommentPermissionText();
 
   return (
     <>
@@ -260,87 +125,91 @@ export default function PrivacySettingsScreen() {
           title: 'Privacy',
           headerShown: true,
           headerBackTitle: 'Back',
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.text,
         }}
       />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <TouchableOpacity style={styles.settingItem} onPress={handleProfileVisibilityPress} activeOpacity={0.7}>
+          <View style={styles.settingItem}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{profileVisibilityLabel}</Text>
-              <Text style={styles.settingValue}>{profileVisibilityValue}</Text>
+              <Text style={styles.settingDesc}>{profileVisibilityDesc}</Text>
             </View>
-            <IconSymbol 
-              ios_icon_name="chevron.right" 
-              android_material_icon_name="chevron-right" 
-              size={20} 
-              color={colors.textSecondary} 
+            <Switch
+              value={profileVisibility === 'public'}
+              onValueChange={handleProfileVisibilityToggle}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleMessagePermissionPress} activeOpacity={0.7}>
+          <View style={styles.settingItem}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{messagePermissionLabel}</Text>
-              <Text style={styles.settingValue}>{messagePermissionValue}</Text>
+              <Text style={styles.settingDesc}>{messagePermissionDesc}</Text>
             </View>
-            <IconSymbol 
-              ios_icon_name="chevron.right" 
-              android_material_icon_name="chevron-right" 
-              size={20} 
-              color={colors.textSecondary} 
+            <Switch
+              value={messagePermission === 'anyone'}
+              onValueChange={handleMessagePermissionToggle}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleServicesVisibilityPress} activeOpacity={0.7}>
+          <View style={styles.settingItem}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{servicesVisibilityLabel}</Text>
-              <Text style={styles.settingValue}>{servicesVisibilityValue}</Text>
+              <Text style={styles.settingDesc}>{servicesVisibilityDesc}</Text>
             </View>
-            <IconSymbol 
-              ios_icon_name="chevron.right" 
-              android_material_icon_name="chevron-right" 
-              size={20} 
-              color={colors.textSecondary} 
+            <Switch
+              value={servicesVisibility === 'everyone'}
+              onValueChange={handleServicesVisibilityToggle}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleFriendsListVisibilityPress} activeOpacity={0.7}>
+          <View style={styles.settingItem}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{friendsListVisibilityLabel}</Text>
-              <Text style={styles.settingValue}>{friendsListVisibilityValue}</Text>
+              <Text style={styles.settingDesc}>{friendsListVisibilityDesc}</Text>
             </View>
-            <IconSymbol 
-              ios_icon_name="chevron.right" 
-              android_material_icon_name="chevron-right" 
-              size={20} 
-              color={colors.textSecondary} 
+            <Switch
+              value={friendsListVisibility === 'everyone'}
+              onValueChange={handleFriendsListVisibilityToggle}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleTagPermissionPress} activeOpacity={0.7}>
+          <View style={styles.settingItem}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{tagPermissionLabel}</Text>
-              <Text style={styles.settingValue}>{tagPermissionValue}</Text>
+              <Text style={styles.settingDesc}>{tagPermissionDesc}</Text>
             </View>
-            <IconSymbol 
-              ios_icon_name="chevron.right" 
-              android_material_icon_name="chevron-right" 
-              size={20} 
-              color={colors.textSecondary} 
+            <Switch
+              value={tagPermission === 'anyone'}
+              onValueChange={handleTagPermissionToggle}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleCommentPermissionPress} activeOpacity={0.7}>
+          <View style={styles.settingItem}>
             <View style={styles.settingContent}>
               <Text style={styles.settingLabel}>{commentPermissionLabel}</Text>
-              <Text style={styles.settingValue}>{commentPermissionValue}</Text>
+              <Text style={styles.settingDesc}>{commentPermissionDesc}</Text>
             </View>
-            <IconSymbol 
-              ios_icon_name="chevron.right" 
-              android_material_icon_name="chevron-right" 
-              size={20} 
-              color={colors.textSecondary} 
+            <Switch
+              value={commentPermission === 'anyone'}
+              onValueChange={handleCommentPermissionToggle}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
             />
-          </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.blockedSection}>
@@ -403,9 +272,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 4,
   },
-  settingValue: {
-    fontSize: 14,
+  settingDesc: {
+    fontSize: 13,
     color: colors.textSecondary,
+    lineHeight: 18,
   },
   blockedSection: {
     marginTop: 32,
