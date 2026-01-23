@@ -4,9 +4,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Alert, 
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import Constants from "expo-constants";
-
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'http://localhost:3000';
+import { authenticatedGet, authenticatedPut } from "@/utils/api";
 
 type ProfileVisibility = 'public' | 'private';
 type MessagePermission = 'anyone' | 'mutual_friends' | 'friends_only';
@@ -14,6 +12,15 @@ type ServicesVisibility = 'everyone' | 'friends_only' | 'only_me';
 type FriendsListVisibility = 'everyone' | 'friends_only' | 'only_me';
 type TagPermission = 'anyone' | 'friends_only' | 'no_one';
 type CommentPermission = 'anyone' | 'friends_only' | 'no_one';
+
+interface PrivacySettings {
+  profileVisibility: ProfileVisibility;
+  messagePermission: MessagePermission;
+  servicesVisibility: ServicesVisibility;
+  friendsListVisibility: FriendsListVisibility;
+  tagPermission: TagPermission;
+  commentPermission: CommentPermission;
+}
 
 export default function PrivacySettingsScreen() {
   const router = useRouter();
@@ -23,78 +30,103 @@ export default function PrivacySettingsScreen() {
   const [friendsListVisibility, setFriendsListVisibility] = useState<FriendsListVisibility>('everyone');
   const [tagPermission, setTagPermission] = useState<TagPermission>('anyone');
   const [commentPermission, setCommentPermission] = useState<CommentPermission>('anyone');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadPrivacySettings();
   }, []);
 
   const loadPrivacySettings = async () => {
-    console.log('PrivacySettings: Loading privacy settings');
+    console.log('PrivacySettings: Loading privacy settings from backend');
     try {
-      // Note: Backend endpoint not yet implemented
-      // When implemented, use: GET /api/settings/privacy or GET /api/users/me/privacy
-      // Expected response: { profileVisibility, messagePermission, servicesVisibility, friendsListVisibility, tagPermission, commentPermission }
-      // For now, using default values set in state
+      const response = await authenticatedGet<PrivacySettings>('/api/settings/privacy');
+      console.log('PrivacySettings: Loaded settings:', response);
+      
+      setProfileVisibility(response.profileVisibility);
+      setMessagePermission(response.messagePermission);
+      setServicesVisibility(response.servicesVisibility);
+      setFriendsListVisibility(response.friendsListVisibility);
+      setTagPermission(response.tagPermission);
+      setCommentPermission(response.commentPermission);
     } catch (error) {
       console.error('PrivacySettings: Error loading settings:', error);
+      Alert.alert('Error', 'Failed to load privacy settings. Using defaults.');
     }
   };
 
-  const updatePrivacySetting = async (setting: string, value: string) => {
-    console.log(`PrivacySettings: Updating ${setting} to ${value}`);
+  const updatePrivacySetting = async (settingKey: keyof PrivacySettings, value: string) => {
+    console.log(`PrivacySettings: Updating ${settingKey} to ${value}`);
+    
+    if (loading) {
+      console.log('PrivacySettings: Update already in progress, skipping');
+      return;
+    }
+    
+    setLoading(true);
+    
     try {
-      // Note: Backend endpoint not yet implemented
-      // When implemented, use: PUT /api/settings/privacy or PUT /api/users/me/privacy
-      // Body: { setting: string, value: string } or { [setting]: value }
-      // Expected response: { success: boolean }
-      // For now, settings are only stored locally in component state
-      console.log('PrivacySettings: Setting updated locally (backend integration pending)');
+      const updateData = { [settingKey]: value };
+      const response = await authenticatedPut<{ success: boolean; settings: PrivacySettings }>('/api/settings/privacy', updateData);
+      
+      console.log('PrivacySettings: Setting updated successfully:', response);
+      
+      if (response.success && response.settings) {
+        setProfileVisibility(response.settings.profileVisibility);
+        setMessagePermission(response.settings.messagePermission);
+        setServicesVisibility(response.settings.servicesVisibility);
+        setFriendsListVisibility(response.settings.friendsListVisibility);
+        setTagPermission(response.settings.tagPermission);
+        setCommentPermission(response.settings.commentPermission);
+      }
     } catch (error) {
       console.error('PrivacySettings: Error updating setting:', error);
-      Alert.alert('Error', 'Failed to update privacy setting');
+      Alert.alert('Error', 'Failed to update privacy setting. Please try again.');
+      await loadPrivacySettings();
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleProfileVisibilityToggle = (value: boolean) => {
+  const handleProfileVisibilityToggle = async (value: boolean) => {
     console.log('PrivacySettings: User toggled Profile Visibility');
     const newValue: ProfileVisibility = value ? 'public' : 'private';
     setProfileVisibility(newValue);
-    updatePrivacySetting('profileVisibility', newValue);
+    await updatePrivacySetting('profileVisibility', newValue);
   };
 
-  const handleMessagePermissionToggle = (value: boolean) => {
+  const handleMessagePermissionToggle = async (value: boolean) => {
     console.log('PrivacySettings: User toggled Message Permission');
     const newValue: MessagePermission = value ? 'anyone' : 'friends_only';
     setMessagePermission(newValue);
-    updatePrivacySetting('messagePermission', newValue);
+    await updatePrivacySetting('messagePermission', newValue);
   };
 
-  const handleServicesVisibilityToggle = (value: boolean) => {
+  const handleServicesVisibilityToggle = async (value: boolean) => {
     console.log('PrivacySettings: User toggled Services Visibility');
     const newValue: ServicesVisibility = value ? 'everyone' : 'only_me';
     setServicesVisibility(newValue);
-    updatePrivacySetting('servicesVisibility', newValue);
+    await updatePrivacySetting('servicesVisibility', newValue);
   };
 
-  const handleFriendsListVisibilityToggle = (value: boolean) => {
+  const handleFriendsListVisibilityToggle = async (value: boolean) => {
     console.log('PrivacySettings: User toggled Friends List Visibility');
     const newValue: FriendsListVisibility = value ? 'everyone' : 'only_me';
     setFriendsListVisibility(newValue);
-    updatePrivacySetting('friendsListVisibility', newValue);
+    await updatePrivacySetting('friendsListVisibility', newValue);
   };
 
-  const handleTagPermissionToggle = (value: boolean) => {
+  const handleTagPermissionToggle = async (value: boolean) => {
     console.log('PrivacySettings: User toggled Tag Permission');
     const newValue: TagPermission = value ? 'anyone' : 'no_one';
     setTagPermission(newValue);
-    updatePrivacySetting('tagPermission', newValue);
+    await updatePrivacySetting('tagPermission', newValue);
   };
 
-  const handleCommentPermissionToggle = (value: boolean) => {
+  const handleCommentPermissionToggle = async (value: boolean) => {
     console.log('PrivacySettings: User toggled Comment Permission');
     const newValue: CommentPermission = value ? 'anyone' : 'no_one';
     setCommentPermission(newValue);
-    updatePrivacySetting('commentPermission', newValue);
+    await updatePrivacySetting('commentPermission', newValue);
   };
 
   const handleBlockedUsersPress = () => {
@@ -143,6 +175,7 @@ export default function PrivacySettingsScreen() {
               onValueChange={handleProfileVisibilityToggle}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+              disabled={loading}
             />
           </View>
 
@@ -156,6 +189,7 @@ export default function PrivacySettingsScreen() {
               onValueChange={handleMessagePermissionToggle}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+              disabled={loading}
             />
           </View>
 
@@ -169,6 +203,7 @@ export default function PrivacySettingsScreen() {
               onValueChange={handleServicesVisibilityToggle}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+              disabled={loading}
             />
           </View>
 
@@ -182,6 +217,7 @@ export default function PrivacySettingsScreen() {
               onValueChange={handleFriendsListVisibilityToggle}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+              disabled={loading}
             />
           </View>
 
@@ -195,6 +231,7 @@ export default function PrivacySettingsScreen() {
               onValueChange={handleTagPermissionToggle}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+              disabled={loading}
             />
           </View>
 
@@ -208,6 +245,7 @@ export default function PrivacySettingsScreen() {
               onValueChange={handleCommentPermissionToggle}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
+              disabled={loading}
             />
           </View>
         </View>
