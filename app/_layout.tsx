@@ -2,7 +2,7 @@
 import "react-native-reanimated";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -16,7 +16,7 @@ import {
 } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 // Note: Error logging is auto-initialized via index.ts import
 
@@ -27,18 +27,31 @@ export const unstable_settings = {
   initialRouteName: "(tabs)", // Ensure any route can link back to `/`
 };
 
-export default function RootLayout() {
+function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const networkState = useNetworkState();
-  const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+  React.useEffect(() => {
+    if (loading) {
+      console.log("RootLayout: Auth loading, waiting...");
+      return;
     }
-  }, [loaded]);
+
+    const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+
+    console.log("RootLayout: Auth check - user:", user?.email, "inAuthGroup:", inAuthGroup, "segments:", segments);
+
+    if (!user && !inAuthGroup) {
+      console.log("RootLayout: User not authenticated, redirecting to /auth");
+      router.replace("/auth");
+    } else if (user && inAuthGroup) {
+      console.log("RootLayout: User authenticated, redirecting to /(tabs)");
+      router.replace("/(tabs)");
+    }
+  }, [user, loading, segments]);
 
   React.useEffect(() => {
     if (
@@ -51,10 +64,6 @@ export default function RootLayout() {
       );
     }
   }, [networkState.isConnected, networkState.isInternetReachable]);
-
-  if (!loaded) {
-    return null;
-  }
 
   const CustomDefaultTheme: Theme = {
     ...DefaultTheme,
@@ -86,56 +95,76 @@ export default function RootLayout() {
         <ThemeProvider
           value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
         >
-          <AuthProvider>
-            <WidgetProvider>
-              <GestureHandlerRootView>
-              <Stack
-                screenOptions={{
-                  headerStyle: {
-                    backgroundColor: colorScheme === "dark" ? colors.background : "rgb(255, 255, 255)",
-                  },
-                  headerTintColor: colorScheme === "dark" ? colors.text : "rgb(0, 0, 0)",
-                  contentStyle: {
-                    backgroundColor: colorScheme === "dark" ? colors.background : "rgb(242, 242, 247)",
-                  },
-                }}
-              >
-                {/* Auth screens */}
-                <Stack.Screen name="auth" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-                {/* Main app with tabs */}
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                {/* Chat screen */}
-                <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
-                {/* User profile screen */}
-                <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
-                {/* Notifications screen */}
-                <Stack.Screen name="notifications" options={{ headerShown: false }} />
-                {/* Edit profile screen */}
-                <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-                {/* Settings screen */}
-                <Stack.Screen name="settings" options={{ headerShown: false }} />
-                {/* Privacy settings screen */}
-                <Stack.Screen name="privacy-settings" options={{ headerShown: false }} />
-                {/* Notification settings screen */}
-                <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
-                {/* Permissions settings screen */}
-                <Stack.Screen name="permissions-settings" options={{ headerShown: false }} />
-                {/* Blocked users screen */}
-                <Stack.Screen name="blocked-users" options={{ headerShown: false }} />
-                {/* Privacy Policy screen */}
-                <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
-                {/* Terms of Service screen */}
-                <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
-                {/* Onboarding screen */}
-                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              </Stack>
-              <SystemBars style={"auto"} />
-              </GestureHandlerRootView>
-            </WidgetProvider>
-          </AuthProvider>
+          <WidgetProvider>
+            <GestureHandlerRootView>
+            <Stack
+              screenOptions={{
+                headerStyle: {
+                  backgroundColor: colorScheme === "dark" ? colors.background : "rgb(255, 255, 255)",
+                },
+                headerTintColor: colorScheme === "dark" ? colors.text : "rgb(0, 0, 0)",
+                contentStyle: {
+                  backgroundColor: colorScheme === "dark" ? colors.background : "rgb(242, 242, 247)",
+                },
+              }}
+            >
+              {/* Auth screens */}
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+              <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+              {/* Main app with tabs */}
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              {/* Chat screen */}
+              <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+              {/* User profile screen */}
+              <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+              {/* Notifications screen */}
+              <Stack.Screen name="notifications" options={{ headerShown: false }} />
+              {/* Edit profile screen */}
+              <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+              {/* Settings screen */}
+              <Stack.Screen name="settings" options={{ headerShown: false }} />
+              {/* Privacy settings screen */}
+              <Stack.Screen name="privacy-settings" options={{ headerShown: false }} />
+              {/* Notification settings screen */}
+              <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+              {/* Permissions settings screen */}
+              <Stack.Screen name="permissions-settings" options={{ headerShown: false }} />
+              {/* Blocked users screen */}
+              <Stack.Screen name="blocked-users" options={{ headerShown: false }} />
+              {/* Privacy Policy screen */}
+              <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+              {/* Terms of Service screen */}
+              <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
+              {/* Onboarding screen */}
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            </Stack>
+            <SystemBars style={"auto"} />
+            </GestureHandlerRootView>
+          </WidgetProvider>
         </ThemeProvider>
     </>
+  );
+}
+
+export default function RootLayout() {
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
   );
 }
