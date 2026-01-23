@@ -99,7 +99,7 @@ export function registerProfileRoutes(app: App) {
 
   /**
    * GET /api/profile/services
-   * Get user services
+   * Get current user's services
    */
   app.fastify.get('/api/profile/services', async (request: FastifyRequest, reply: FastifyReply) => {
     const session = await requireAuth(request, reply);
@@ -116,6 +116,38 @@ export function registerProfileRoutes(app: App) {
       return services;
     } catch (error) {
       app.logger.error({ err: error, userId: session.user.id }, 'Failed to fetch services');
+      throw error;
+    }
+  });
+
+  /**
+   * GET /api/users/:id/services
+   * Get another user's services (public endpoint)
+   */
+  app.fastify.get('/api/users/:id/services', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+
+    app.logger.info({ userId: id }, 'Fetching user services');
+
+    try {
+      // Verify user exists
+      const userProfile = await app.db.query.userProfiles.findFirst({
+        where: eq(schema.userProfiles.id, id),
+      });
+
+      if (!userProfile) {
+        app.logger.warn({ userId: id }, 'User not found');
+        return reply.status(404).send({ error: 'User not found' });
+      }
+
+      const services = await app.db.query.userServices.findMany({
+        where: eq(schema.userServices.userId, id),
+      });
+
+      app.logger.info({ userId: id, count: services.length }, 'User services retrieved');
+      return services;
+    } catch (error) {
+      app.logger.error({ err: error, userId: id }, 'Failed to fetch user services');
       throw error;
     }
   });
@@ -186,7 +218,7 @@ export function registerProfileRoutes(app: App) {
 
   /**
    * GET /api/profile/knowledge
-   * Get user knowledge topics
+   * Get current user's knowledge topics
    */
   app.fastify.get('/api/profile/knowledge', async (request: FastifyRequest, reply: FastifyReply) => {
     const session = await requireAuth(request, reply);
@@ -203,6 +235,38 @@ export function registerProfileRoutes(app: App) {
       return knowledge;
     } catch (error) {
       app.logger.error({ err: error, userId: session.user.id }, 'Failed to fetch knowledge');
+      throw error;
+    }
+  });
+
+  /**
+   * GET /api/users/:id/knowledge
+   * Get another user's knowledge topics (public endpoint)
+   */
+  app.fastify.get('/api/users/:id/knowledge', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+
+    app.logger.info({ userId: id }, 'Fetching user knowledge topics');
+
+    try {
+      // Verify user exists
+      const userProfile = await app.db.query.userProfiles.findFirst({
+        where: eq(schema.userProfiles.id, id),
+      });
+
+      if (!userProfile) {
+        app.logger.warn({ userId: id }, 'User not found');
+        return reply.status(404).send({ error: 'User not found' });
+      }
+
+      const knowledge = await app.db.query.userKnowledge.findMany({
+        where: eq(schema.userKnowledge.userId, id),
+      });
+
+      app.logger.info({ userId: id, count: knowledge.length }, 'User knowledge retrieved');
+      return knowledge;
+    } catch (error) {
+      app.logger.error({ err: error, userId: id }, 'Failed to fetch user knowledge');
       throw error;
     }
   });

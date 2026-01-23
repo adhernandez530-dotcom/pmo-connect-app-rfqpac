@@ -110,6 +110,84 @@ export function registerFriendsRoutes(app: App) {
   );
 
   /**
+   * GET /api/friends/status/:userId
+   * Get friendship status between current user and specified user
+   */
+  app.fastify.get(
+    '/api/friends/status/:userId',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { userId } = request.params as { userId: string };
+
+      app.logger.info(
+        { currentUserId: session.user.id, userId },
+        'Fetching friendship status'
+      );
+
+      try {
+        if (userId === session.user.id) {
+          app.logger.warn({ userId: session.user.id }, 'Cannot check friendship with self');
+          return reply
+            .status(400)
+            .send({ error: 'Cannot check friendship status with yourself' });
+        }
+
+        // Check if target user exists
+        const targetUser = await app.db.query.userProfiles.findFirst({
+          where: eq(schema.userProfiles.id, userId),
+        });
+
+        if (!targetUser) {
+          app.logger.warn({ userId }, 'Target user not found');
+          return reply.status(404).send({ error: 'User not found' });
+        }
+
+        // Look for existing friendship in either direction
+        const friendship = await app.db.query.friendships.findFirst({
+          where: or(
+            and(
+              eq(schema.friendships.userId, session.user.id),
+              eq(schema.friendships.friendId, userId)
+            ),
+            and(
+              eq(schema.friendships.userId, userId),
+              eq(schema.friendships.friendId, session.user.id)
+            )
+          ),
+        });
+
+        let status = 'none';
+
+        if (friendship) {
+          if (friendship.status === 'accepted') {
+            status = 'friends';
+          } else if (friendship.status === 'pending') {
+            // Determine if it's a sent or received request
+            status =
+              friendship.userId === session.user.id
+                ? 'pending_sent'
+                : 'pending_received';
+          }
+        }
+
+        app.logger.info(
+          { currentUserId: session.user.id, userId, status },
+          'Friendship status retrieved'
+        );
+        return { status };
+      } catch (error) {
+        app.logger.error(
+          { err: error, currentUserId: session.user.id, userId },
+          'Failed to fetch friendship status'
+        );
+        throw error;
+      }
+    }
+  );
+
+  /**
    * POST /api/friends/request
    * Send a friend request
    */
