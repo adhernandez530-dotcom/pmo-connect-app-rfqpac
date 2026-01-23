@@ -4,8 +4,10 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Platfo
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
+import { Toast } from "@/components/Toast";
 import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
+import { authenticatedFetch, authenticatedGet, authenticatedPut, authenticatedPost, authenticatedDelete } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -23,10 +25,22 @@ interface UserProfile {
   avatarUrl?: string;
 }
 
+interface Service {
+  id: string;
+  serviceName: string;
+}
+
+interface Knowledge {
+  id: string;
+  topic: string;
+}
+
 export default function EditProfileScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   
   // Form fields
   const [username, setUsername] = useState('');
@@ -36,17 +50,26 @@ export default function EditProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [localAvatarUri, setLocalAvatarUri] = useState<string | undefined>(undefined);
 
+  // Services and Knowledge
+  const [services, setServices] = useState<Service[]>([]);
+  const [knowledge, setKnowledge] = useState<Knowledge[]>([]);
+  const [newService, setNewService] = useState('');
+  const [newKnowledge, setNewKnowledge] = useState('');
+  const [showServiceInput, setShowServiceInput] = useState(false);
+  const [showKnowledgeInput, setShowKnowledgeInput] = useState(false);
+
   useEffect(() => {
     console.log('EditProfileScreen: Loading current profile data');
     loadProfile();
+    loadServices();
+    loadKnowledge();
   }, []);
 
   const loadProfile = async () => {
     console.log('EditProfileScreen: Fetching user profile');
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/users/me`);
-      const data = await response.json();
+      const data = await authenticatedGet('/api/users/me');
       console.log('EditProfileScreen: Profile loaded successfully', data);
       
       if (data && !data.error) {
@@ -66,10 +89,35 @@ export default function EditProfileScreen() {
     }
   };
 
+  const loadServices = async () => {
+    console.log('EditProfileScreen: Loading services');
+    try {
+      const data = await authenticatedGet('/api/profile/services');
+      console.log('EditProfileScreen: Services loaded', data);
+      if (Array.isArray(data)) {
+        setServices(data);
+      }
+    } catch (error) {
+      console.error('EditProfileScreen: Error loading services:', error);
+    }
+  };
+
+  const loadKnowledge = async () => {
+    console.log('EditProfileScreen: Loading knowledge topics');
+    try {
+      const data = await authenticatedGet('/api/profile/knowledge');
+      console.log('EditProfileScreen: Knowledge loaded', data);
+      if (Array.isArray(data)) {
+        setKnowledge(data);
+      }
+    } catch (error) {
+      console.error('EditProfileScreen: Error loading knowledge:', error);
+    }
+  };
+
   const handlePickImage = async () => {
     console.log('EditProfileScreen: User tapped change avatar');
     
-    // Request permission
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (permissionResult.granted === false) {
@@ -77,7 +125,6 @@ export default function EditProfileScreen() {
       return;
     }
 
-    // Launch image picker
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -88,8 +135,70 @@ export default function EditProfileScreen() {
     if (!result.canceled && result.assets[0]) {
       console.log('EditProfileScreen: Image selected', result.assets[0].uri);
       setLocalAvatarUri(result.assets[0].uri);
-      // TODO: Backend Integration - POST /api/upload/avatar with multipart form data → { url: string }
-      // For now, just store the local URI
+    }
+  };
+
+  const handleAddService = async () => {
+    console.log('EditProfileScreen: Adding service:', newService);
+    if (!newService.trim()) {
+      return;
+    }
+
+    try {
+      const data = await authenticatedPost('/api/profile/services', {
+        serviceName: newService.trim(),
+      });
+      console.log('EditProfileScreen: Service added', data);
+      setServices([...services, data]);
+      setNewService('');
+      setShowServiceInput(false);
+    } catch (error) {
+      console.error('EditProfileScreen: Error adding service:', error);
+      Alert.alert('Error', 'Failed to add service');
+    }
+  };
+
+  const handleRemoveService = async (serviceId: string) => {
+    console.log('EditProfileScreen: Removing service:', serviceId);
+    try {
+      await authenticatedDelete(`/api/profile/services/${serviceId}`);
+      console.log('EditProfileScreen: Service removed');
+      setServices(services.filter(s => s.id !== serviceId));
+    } catch (error) {
+      console.error('EditProfileScreen: Error removing service:', error);
+      Alert.alert('Error', 'Failed to remove service');
+    }
+  };
+
+  const handleAddKnowledge = async () => {
+    console.log('EditProfileScreen: Adding knowledge topic:', newKnowledge);
+    if (!newKnowledge.trim()) {
+      return;
+    }
+
+    try {
+      const data = await authenticatedPost('/api/profile/knowledge', {
+        topic: newKnowledge.trim(),
+      });
+      console.log('EditProfileScreen: Knowledge topic added', data);
+      setKnowledge([...knowledge, data]);
+      setNewKnowledge('');
+      setShowKnowledgeInput(false);
+    } catch (error) {
+      console.error('EditProfileScreen: Error adding knowledge topic:', error);
+      Alert.alert('Error', 'Failed to add knowledge topic');
+    }
+  };
+
+  const handleRemoveKnowledge = async (knowledgeId: string) => {
+    console.log('EditProfileScreen: Removing knowledge topic:', knowledgeId);
+    try {
+      await authenticatedDelete(`/api/profile/knowledge/${knowledgeId}`);
+      console.log('EditProfileScreen: Knowledge topic removed');
+      setKnowledge(knowledge.filter(k => k.id !== knowledgeId));
+    } catch (error) {
+      console.error('EditProfileScreen: Error removing knowledge topic:', error);
+      Alert.alert('Error', 'Failed to remove knowledge topic');
     }
   };
 
@@ -103,36 +212,22 @@ export default function EditProfileScreen() {
 
     setSaving(true);
     try {
-      // TODO: Backend Integration - PUT /api/users/me with { username, fullName, location, bio, avatarUrl }
-      const response = await fetch(`${BACKEND_URL}/api/users/me`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          fullName,
-          location,
-          bio,
-          avatarUrl: localAvatarUri || avatarUrl,
-        }),
+      const data = await authenticatedPut('/api/users/me', {
+        username,
+        fullName,
+        location,
+        bio,
+        avatarUrl: localAvatarUri || avatarUrl,
       });
-
-      const data = await response.json();
-      console.log('EditProfileScreen: Profile update response', data);
-
-      if (response.ok) {
-        console.log('EditProfileScreen: Profile updated successfully');
-        Alert.alert('Success', 'Profile updated successfully', [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ]);
-      } else {
-        console.error('EditProfileScreen: Profile update failed', data);
-        Alert.alert('Error', data.error || 'Failed to update profile');
-      }
+      console.log('EditProfileScreen: Profile updated successfully', data);
+      
+      setToastMessage('Profile updated successfully!');
+      setShowToast(true);
+      
+      setTimeout(() => {
+        console.log('EditProfileScreen: Navigating back after successful save');
+        router.back();
+      }, 1500);
     } catch (error) {
       console.error('EditProfileScreen: Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile');
@@ -142,8 +237,8 @@ export default function EditProfileScreen() {
   };
 
   const handleCancel = () => {
-    console.log('EditProfileScreen: User tapped Cancel button');
-    router.back();
+    console.log('EditProfileScreen: User tapped Cancel button - navigating to home');
+    router.push('/(tabs)/(home)');
   };
 
   const getInitials = (name: string) => {
@@ -169,6 +264,11 @@ export default function EditProfileScreen() {
   const bioPlaceholder = 'Tell others about yourself...';
   const locationLabel = 'Location';
   const locationPlaceholder = 'City, Country';
+  const servicesLabel = 'Services';
+  const servicesPlaceholder = 'Add a service you provide';
+  const knowledgeLabel = 'Knowledge Topics';
+  const knowledgePlaceholder = 'Add a topic you know about';
+  const addButtonText = 'Add';
 
   if (loading) {
     return (
@@ -195,6 +295,12 @@ export default function EditProfileScreen() {
           headerShown: true,
           headerBackTitle: 'Back',
         }}
+      />
+      
+      <Toast
+        message={toastMessage}
+        visible={showToast}
+        onHide={() => setShowToast(false)}
       />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -295,6 +401,118 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
+          {/* Services Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>{servicesLabel}</Text>
+              <TouchableOpacity 
+                style={styles.addIconButton}
+                onPress={() => setShowServiceInput(!showServiceInput)}
+              >
+                <IconSymbol 
+                  ios_icon_name="plus.circle.fill" 
+                  android_material_icon_name="add-circle" 
+                  size={24} 
+                  color={colors.primary} 
+                />
+              </TouchableOpacity>
+            </View>
+            
+            {showServiceInput && (
+              <View style={styles.addInputContainer}>
+                <TextInput
+                  style={styles.addInput}
+                  value={newService}
+                  onChangeText={setNewService}
+                  placeholder={servicesPlaceholder}
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="words"
+                />
+                <TouchableOpacity 
+                  style={styles.addButton}
+                  onPress={handleAddService}
+                >
+                  <Text style={styles.addButtonText}>{addButtonText}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.tagsContainer}>
+              {services.map((service, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{service.serviceName}</Text>
+                  <TouchableOpacity 
+                    onPress={() => handleRemoveService(service.id)}
+                    style={styles.tagRemove}
+                  >
+                    <IconSymbol 
+                      ios_icon_name="xmark.circle.fill" 
+                      android_material_icon_name="cancel" 
+                      size={18} 
+                      color={colors.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Knowledge Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>{knowledgeLabel}</Text>
+              <TouchableOpacity 
+                style={styles.addIconButton}
+                onPress={() => setShowKnowledgeInput(!showKnowledgeInput)}
+              >
+                <IconSymbol 
+                  ios_icon_name="plus.circle.fill" 
+                  android_material_icon_name="add-circle" 
+                  size={24} 
+                  color={colors.primary} 
+                />
+              </TouchableOpacity>
+            </View>
+            
+            {showKnowledgeInput && (
+              <View style={styles.addInputContainer}>
+                <TextInput
+                  style={styles.addInput}
+                  value={newKnowledge}
+                  onChangeText={setNewKnowledge}
+                  placeholder={knowledgePlaceholder}
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="words"
+                />
+                <TouchableOpacity 
+                  style={styles.addButton}
+                  onPress={handleAddKnowledge}
+                >
+                  <Text style={styles.addButtonText}>{addButtonText}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.tagsContainer}>
+              {knowledge.map((item, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{item.topic}</Text>
+                  <TouchableOpacity 
+                    onPress={() => handleRemoveKnowledge(item.id)}
+                    style={styles.tagRemove}
+                  >
+                    <IconSymbol 
+                      ios_icon_name="xmark.circle.fill" 
+                      android_material_icon_name="cancel" 
+                      size={18} 
+                      color={colors.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
@@ -343,11 +561,19 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 12,
+  },
+  addIconButton: {
+    padding: 4,
   },
   avatarSection: {
     alignItems: 'center',
@@ -414,6 +640,54 @@ const styles = StyleSheet.create({
     minHeight: 100,
     paddingTop: 12,
     paddingBottom: 12,
+  },
+  addInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  addInput: {
+    flex: 1,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text,
+  },
+  addButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  addButtonText: {
+    color: colors.background,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundAlt,
+    paddingVertical: 8,
+    paddingLeft: 16,
+    paddingRight: 8,
+    borderRadius: 20,
+    gap: 8,
+  },
+  tagText: {
+    fontSize: 14,
+    color: colors.text,
+  },
+  tagRemove: {
+    padding: 2,
   },
   buttonContainer: {
     marginTop: 32,
