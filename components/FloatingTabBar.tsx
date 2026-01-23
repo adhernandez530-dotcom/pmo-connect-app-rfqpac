@@ -116,11 +116,18 @@ export default function FloatingTabBar({
   const loadUnreadCount = async () => {
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/notifications/unread-count`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('FloatingTabBar: Unread count API returned error status:', response.status, errorText);
+        setUnreadCount(0);
+        return;
+      }
       const data = await response.json();
       console.log('FloatingTabBar: Unread notification count:', data.count);
       setUnreadCount(data.count || 0);
     } catch (error) {
-      console.error('FloatingTabBar: Error loading unread count:', error);
+      console.error('FloatingTabBar: Error loading unread count:', error instanceof Error ? error.message : String(error));
+      setUnreadCount(0);
     }
   };
 

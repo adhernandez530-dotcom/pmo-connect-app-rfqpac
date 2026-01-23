@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
+import { Stack, useRouter } from "expo-router";
 import { IconSymbol } from "@/components/IconSymbol";
 import Constants from "expo-constants";
 import { authenticatedFetch } from "@/utils/api";
@@ -59,7 +59,8 @@ export default function HomeScreen() {
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me`);
       if (!response.ok) {
-        console.log('HomeScreen: Profile API returned error status:', response.status);
+        const errorText = await response.text();
+        console.log('HomeScreen: Profile API returned error status:', response.status, errorText);
         return;
       }
       const data = await response.json();
@@ -71,7 +72,7 @@ export default function HomeScreen() {
         console.log('HomeScreen: Profile API returned error or invalid data:', data);
       }
     } catch (error) {
-      console.error('HomeScreen: Error loading profile:', error);
+      console.error('HomeScreen: Error loading profile:', error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -80,7 +81,8 @@ export default function HomeScreen() {
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/services`);
       if (!response.ok) {
-        console.log('HomeScreen: Services API returned error status:', response.status);
+        const errorText = await response.text();
+        console.log('HomeScreen: Services API returned error status:', response.status, errorText);
         setServices([]);
         return;
       }
@@ -94,7 +96,7 @@ export default function HomeScreen() {
         setServices([]);
       }
     } catch (error) {
-      console.error('HomeScreen: Error loading services:', error);
+      console.error('HomeScreen: Error loading services:', error instanceof Error ? error.message : String(error));
       setServices([]);
     }
   };
@@ -104,7 +106,8 @@ export default function HomeScreen() {
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/knowledge`);
       if (!response.ok) {
-        console.log('HomeScreen: Knowledge API returned error status:', response.status);
+        const errorText = await response.text();
+        console.log('HomeScreen: Knowledge API returned error status:', response.status, errorText);
         setKnowledge([]);
         return;
       }
@@ -118,7 +121,7 @@ export default function HomeScreen() {
         setKnowledge([]);
       }
     } catch (error) {
-      console.error('HomeScreen: Error loading knowledge:', error);
+      console.error('HomeScreen: Error loading knowledge:', error instanceof Error ? error.message : String(error));
       setKnowledge([]);
     }
   };
@@ -126,11 +129,18 @@ export default function HomeScreen() {
   const loadUnreadCount = async () => {
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/notifications/unread-count`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('HomeScreen: Unread count API returned error status:', response.status, errorText);
+        setUnreadCount(0);
+        return;
+      }
       const data = await response.json();
-      console.log('HomeScreen iOS: Unread notification count:', data.count);
+      console.log('HomeScreen: Unread notification count:', data.count);
       setUnreadCount(data.count || 0);
     } catch (error) {
-      console.error('HomeScreen iOS: Error loading unread count:', error);
+      console.error('HomeScreen: Error loading unread count:', error instanceof Error ? error.message : String(error));
+      setUnreadCount(0);
     }
   };
 
@@ -184,6 +194,7 @@ export default function HomeScreen() {
     <>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: 'Home',
           headerLargeTitle: true,
           headerRight: () => (
@@ -497,9 +508,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
     alignItems: 'center',
     paddingVertical: 24,
-  },
-  notificationIconContainer: {
-    marginBottom: 16,
   },
   noNotificationsText: {
     fontSize: 16,
