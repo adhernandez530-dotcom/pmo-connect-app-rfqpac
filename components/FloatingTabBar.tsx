@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   View,
@@ -146,6 +147,9 @@ export default function FloatingTabBar({
     };
   });
 
+  // Dynamic badge border color based on theme
+  const badgeBorderColor = theme.dark ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+
   // Dynamic styles based on theme
   const dynamicStyles = {
     blurContainer: {
@@ -206,12 +210,11 @@ export default function FloatingTabBar({
               return (
                 <React.Fragment key={index}>
                 <TouchableOpacity
-                  key={index} // Use index as key
                   style={styles.tab}
                   onPress={() => handleTabPress(tab.route)}
                   activeOpacity={0.7}
                 >
-                  <View key={index} style={styles.tabContent}>
+                  <View style={styles.tabContent}>
                     <View style={styles.iconContainer}>
                       <IconSymbol
                         android_material_icon_name={tab.icon}
@@ -220,7 +223,10 @@ export default function FloatingTabBar({
                         color={isActive ? colors.primary : colors.textSecondary}
                       />
                       {showBadge && (
-                        <View style={styles.notificationBadge}>
+                        <View style={[
+                          styles.notificationBadge,
+                          { borderColor: badgeBorderColor }
+                        ]}>
                           <Text style={styles.notificationBadgeText}>
                             {unreadCount > 99 ? '99+' : unreadCount}
                           </Text>
@@ -311,7 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: theme.dark ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+    // borderColor applied dynamically in component
   },
   notificationBadgeText: {
     color: '#FFFFFF',
