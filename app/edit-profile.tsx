@@ -7,7 +7,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { Toast } from "@/components/Toast";
 import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
-import { authenticatedFetch, authenticatedGet, authenticatedPut, authenticatedPost, authenticatedDelete } from "@/utils/api";
+import { authenticatedGet, authenticatedPut, authenticatedPost, authenticatedDelete } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -139,22 +139,31 @@ export default function EditProfileScreen() {
   };
 
   const handleAddService = async () => {
-    console.log('EditProfileScreen: Adding service:', newService);
+    console.log('EditProfileScreen: User tapped Add Service button');
+    console.log('EditProfileScreen: New service value:', newService);
+    
     if (!newService.trim()) {
+      console.log('EditProfileScreen: Service name is empty, showing alert');
+      Alert.alert('Validation Error', 'Please enter a service name');
       return;
     }
 
+    console.log('EditProfileScreen: Adding service:', newService.trim());
     try {
       const data = await authenticatedPost('/api/profile/services', {
         serviceName: newService.trim(),
       });
-      console.log('EditProfileScreen: Service added', data);
+      console.log('EditProfileScreen: Service added successfully', data);
       setServices([...services, data]);
       setNewService('');
       setShowServiceInput(false);
+      
+      setToastMessage('Service added successfully!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error adding service:', error);
-      Alert.alert('Error', 'Failed to add service');
+      Alert.alert('Error', 'Failed to add service. Please try again.');
     }
   };
 
@@ -164,6 +173,10 @@ export default function EditProfileScreen() {
       await authenticatedDelete(`/api/profile/services/${serviceId}`);
       console.log('EditProfileScreen: Service removed');
       setServices(services.filter(s => s.id !== serviceId));
+      
+      setToastMessage('Service removed');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error removing service:', error);
       Alert.alert('Error', 'Failed to remove service');
@@ -171,22 +184,31 @@ export default function EditProfileScreen() {
   };
 
   const handleAddKnowledge = async () => {
-    console.log('EditProfileScreen: Adding knowledge topic:', newKnowledge);
+    console.log('EditProfileScreen: User tapped Add Knowledge button');
+    console.log('EditProfileScreen: New knowledge value:', newKnowledge);
+    
     if (!newKnowledge.trim()) {
+      console.log('EditProfileScreen: Knowledge topic is empty, showing alert');
+      Alert.alert('Validation Error', 'Please enter a knowledge topic');
       return;
     }
 
+    console.log('EditProfileScreen: Adding knowledge topic:', newKnowledge.trim());
     try {
       const data = await authenticatedPost('/api/profile/knowledge', {
         topic: newKnowledge.trim(),
       });
-      console.log('EditProfileScreen: Knowledge topic added', data);
+      console.log('EditProfileScreen: Knowledge topic added successfully', data);
       setKnowledge([...knowledge, data]);
       setNewKnowledge('');
       setShowKnowledgeInput(false);
+      
+      setToastMessage('Knowledge topic added successfully!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error adding knowledge topic:', error);
-      Alert.alert('Error', 'Failed to add knowledge topic');
+      Alert.alert('Error', 'Failed to add knowledge topic. Please try again.');
     }
   };
 
@@ -196,6 +218,10 @@ export default function EditProfileScreen() {
       await authenticatedDelete(`/api/profile/knowledge/${knowledgeId}`);
       console.log('EditProfileScreen: Knowledge topic removed');
       setKnowledge(knowledge.filter(k => k.id !== knowledgeId));
+      
+      setToastMessage('Knowledge topic removed');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
     } catch (error) {
       console.error('EditProfileScreen: Error removing knowledge topic:', error);
       Alert.alert('Error', 'Failed to remove knowledge topic');
@@ -203,22 +229,34 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
-    console.log('EditProfileScreen: User tapped Save button');
+    console.log('EditProfileScreen: User tapped Save Changes button');
+    console.log('EditProfileScreen: Current form values:', {
+      username,
+      fullName,
+      location,
+      bio,
+      avatarUrl: localAvatarUri || avatarUrl,
+    });
     
     if (!fullName.trim()) {
+      console.log('EditProfileScreen: Full name is empty, showing validation error');
       Alert.alert('Validation Error', 'Full name is required');
       return;
     }
 
     setSaving(true);
+    console.log('EditProfileScreen: Saving profile changes...');
     try {
-      const data = await authenticatedPut('/api/users/me', {
-        username,
-        fullName,
-        location,
-        bio,
-        avatarUrl: localAvatarUri || avatarUrl,
-      });
+      const updateData = {
+        username: username.trim(),
+        fullName: fullName.trim(),
+        location: location.trim(),
+        bio: bio.trim(),
+        avatarUrl: localAvatarUri || avatarUrl || '',
+      };
+      console.log('EditProfileScreen: Sending update data:', updateData);
+      
+      const data = await authenticatedPut('/api/users/me', updateData);
       console.log('EditProfileScreen: Profile updated successfully', data);
       
       setToastMessage('Profile updated successfully!');
@@ -226,11 +264,12 @@ export default function EditProfileScreen() {
       
       setTimeout(() => {
         console.log('EditProfileScreen: Navigating back after successful save');
+        setShowToast(false);
         router.back();
       }, 1500);
     } catch (error) {
       console.error('EditProfileScreen: Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -407,7 +446,10 @@ export default function EditProfileScreen() {
               <Text style={styles.sectionLabel}>{servicesLabel}</Text>
               <TouchableOpacity 
                 style={styles.addIconButton}
-                onPress={() => setShowServiceInput(!showServiceInput)}
+                onPress={() => {
+                  console.log('EditProfileScreen: Toggling service input visibility');
+                  setShowServiceInput(!showServiceInput);
+                }}
               >
                 <IconSymbol 
                   ios_icon_name="plus.circle.fill" 
@@ -423,10 +465,15 @@ export default function EditProfileScreen() {
                 <TextInput
                   style={styles.addInput}
                   value={newService}
-                  onChangeText={setNewService}
+                  onChangeText={(text) => {
+                    console.log('EditProfileScreen: Service input changed:', text);
+                    setNewService(text);
+                  }}
                   placeholder={servicesPlaceholder}
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="words"
+                  returnKeyType="done"
+                  onSubmitEditing={handleAddService}
                 />
                 <TouchableOpacity 
                   style={styles.addButton}
@@ -463,7 +510,10 @@ export default function EditProfileScreen() {
               <Text style={styles.sectionLabel}>{knowledgeLabel}</Text>
               <TouchableOpacity 
                 style={styles.addIconButton}
-                onPress={() => setShowKnowledgeInput(!showKnowledgeInput)}
+                onPress={() => {
+                  console.log('EditProfileScreen: Toggling knowledge input visibility');
+                  setShowKnowledgeInput(!showKnowledgeInput);
+                }}
               >
                 <IconSymbol 
                   ios_icon_name="plus.circle.fill" 
@@ -479,10 +529,15 @@ export default function EditProfileScreen() {
                 <TextInput
                   style={styles.addInput}
                   value={newKnowledge}
-                  onChangeText={setNewKnowledge}
+                  onChangeText={(text) => {
+                    console.log('EditProfileScreen: Knowledge input changed:', text);
+                    setNewKnowledge(text);
+                  }}
                   placeholder={knowledgePlaceholder}
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="words"
+                  returnKeyType="done"
+                  onSubmitEditing={handleAddKnowledge}
                 />
                 <TouchableOpacity 
                   style={styles.addButton}
