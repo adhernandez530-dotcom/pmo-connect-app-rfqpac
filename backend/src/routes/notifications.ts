@@ -5,7 +5,7 @@
 
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 
 export function registerNotificationsRoutes(app: App) {
@@ -51,6 +51,43 @@ export function registerNotificationsRoutes(app: App) {
         app.logger.error(
           { err: error, userId: session.user.id },
           'Failed to fetch notifications'
+        );
+        throw error;
+      }
+    }
+  );
+
+  /**
+   * GET /api/notifications/unread-count
+   * Get the number of unread notifications
+   */
+  app.fastify.get(
+    '/api/notifications/unread-count',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      app.logger.info({ userId: session.user.id }, 'Fetching unread notification count');
+
+      try {
+        const unreadNotifications = await app.db.query.notifications.findMany({
+          where: and(
+            eq(schema.notifications.userId, session.user.id),
+            eq(schema.notifications.read, false)
+          ),
+        });
+
+        const count = unreadNotifications.length;
+
+        app.logger.info(
+          { userId: session.user.id, unreadCount: count },
+          'Unread notification count retrieved'
+        );
+        return { count };
+      } catch (error) {
+        app.logger.error(
+          { err: error, userId: session.user.id },
+          'Failed to fetch unread notification count'
         );
         throw error;
       }
