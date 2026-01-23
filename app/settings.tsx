@@ -1,17 +1,21 @@
 
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, Modal } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiCall } from "@/utils/api";
+import { authenticatedPost } from "@/utils/api";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
 
   const handleLogout = () => {
     console.log('SettingsScreen: User tapped Logout button');
@@ -32,10 +36,7 @@ export default function SettingsScreen() {
             setIsLoggingOut(true);
             try {
               // Call backend logout endpoint
-              const data = await apiCall<{ success: boolean; message: string }>('/api/account/logout', {
-                method: 'POST',
-                body: JSON.stringify({}),
-              });
+              const data = await authenticatedPost<{ success: boolean; message: string }>('/api/account/logout', {});
               
               console.log('SettingsScreen: Logout response:', data);
               
@@ -57,11 +58,66 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleRequestVerificationCode = async () => {
+    console.log('SettingsScreen: Requesting verification code');
+    setIsRequestingCode(true);
+    try {
+      const data = await authenticatedPost<{ success: boolean; message: string }>(
+        '/api/account/deactivate/request-code',
+        {}
+      );
+      
+      console.log('SettingsScreen: Request code response:', data);
+      
+      Alert.alert('Verification Code Sent', data.message || 'A verification code has been sent to your phone number.');
+      setShowVerificationModal(true);
+    } catch (error) {
+      console.error('SettingsScreen: Error requesting verification code:', error);
+      Alert.alert('Error', 'Failed to send verification code. Please ensure you have a phone number on file.');
+    } finally {
+      setIsRequestingCode(false);
+    }
+  };
+
+  const handleVerifyAndDeactivate = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      Alert.alert('Invalid Code', 'Please enter a valid 6-digit verification code.');
+      return;
+    }
+
+    console.log('SettingsScreen: Verifying code and deactivating account');
+    setIsVerifyingCode(true);
+    try {
+      const data = await authenticatedPost<{ success: boolean; message: string }>(
+        '/api/account/deactivate/verify',
+        { code: verificationCode }
+      );
+      
+      console.log('SettingsScreen: Verify response:', data);
+      
+      // Close modal
+      setShowVerificationModal(false);
+      setVerificationCode("");
+      
+      // Sign out from auth context (clears local session)
+      await signOut();
+      
+      Alert.alert('Account Deactivated', data.message || 'Your account has been deactivated successfully');
+      // Navigate to auth screen
+      router.replace('/auth');
+    } catch (error) {
+      console.error('SettingsScreen: Error verifying code:', error);
+      Alert.alert('Error', 'Invalid or expired verification code. Please try again.');
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
   const handleDeactivateAccount = () => {
     console.log('SettingsScreen: User tapped Deactivate Account button');
     Alert.alert(
       'Deactivate Account',
-      'Are you sure you want to deactivate your account? This action will hide your profile and you can reactivate it later by logging in again.',
+      'Are you sure you want to deactivate your account? A verification code will be sent to your phone number.',
       [
         {
           text: 'Cancel',
@@ -69,50 +125,9 @@ export default function SettingsScreen() {
           onPress: () => console.log('SettingsScreen: Account deactivation cancelled'),
         },
         {
-          text: 'Deactivate',
+          text: 'Continue',
           style: 'destructive',
-          onPress: () => {
-            // Second confirmation
-            Alert.alert(
-              'Final Confirmation',
-              'This will deactivate your account. Are you absolutely sure?',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Yes, Deactivate',
-                  style: 'destructive',
-                  onPress: async () => {
-                    console.log('SettingsScreen: Deactivating account');
-                    setIsDeactivating(true);
-                    try {
-                      // Call backend deactivate endpoint
-                      const data = await apiCall<{ success: boolean; message: string }>('/api/account/deactivate', {
-                        method: 'DELETE',
-                        body: JSON.stringify({}),
-                      });
-                      
-                      console.log('SettingsScreen: Deactivate response:', data);
-                      
-                      // Sign out from auth context (clears local session)
-                      await signOut();
-                      
-                      Alert.alert('Account Deactivated', 'Your account has been deactivated successfully');
-                      // Navigate to auth screen
-                      router.replace('/auth');
-                    } catch (error) {
-                      console.error('SettingsScreen: Error deactivating account:', error);
-                      Alert.alert('Error', 'Failed to deactivate account. Please try again.');
-                    } finally {
-                      setIsDeactivating(false);
-                    }
-                  },
-                },
-              ]
-            );
-          },
+          onPress: handleRequestVerificationCode,
         },
       ]
     );
@@ -151,11 +166,17 @@ export default function SettingsScreen() {
   const legalSectionTitle = 'Legal';
   const privacyPolicyText = 'Privacy Policy';
   const termsOfServiceText = 'Terms of Service';
-  const dangerZoneTitle = 'Danger Zone';
+  const accountManagementTitle = 'Account Management';
   const logoutText = 'Log Out';
   const deactivateAccountText = 'Deactivate Account';
   const loggingOutText = 'Logging out...';
   const deactivatingText = 'Deactivating...';
+  const verificationModalTitle = 'Verify Account Deactivation';
+  const verificationModalDescription = 'Enter the 6-digit verification code sent to your phone number.';
+  const verificationCodePlaceholder = 'Enter 6-digit code';
+  const verifyButtonText = 'Verify & Deactivate';
+  const cancelButtonText = 'Cancel';
+  const verifyingText = 'Verifying...';
 
   return (
     <>
@@ -266,8 +287,6 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.dangerSectionTitle}>{dangerZoneTitle}</Text>
-          
           <TouchableOpacity 
             style={styles.logoutButton} 
             onPress={handleLogout}
@@ -283,11 +302,15 @@ export default function SettingsScreen() {
               {isLoggingOut ? loggingOutText : logoutText}
             </Text>
           </TouchableOpacity>
+        </View>
 
+        <View style={styles.section}>
+          <Text style={styles.accountManagementTitle}>{accountManagementTitle}</Text>
+          
           <TouchableOpacity 
             style={styles.deactivateButton} 
             onPress={handleDeactivateAccount}
-            disabled={isDeactivating}
+            disabled={isDeactivating || isRequestingCode}
           >
             <IconSymbol 
               ios_icon_name="exclamationmark.triangle.fill" 
@@ -296,13 +319,65 @@ export default function SettingsScreen() {
               color={colors.background} 
             />
             <Text style={styles.deactivateButtonText}>
-              {isDeactivating ? deactivatingText : deactivateAccountText}
+              {isRequestingCode ? 'Sending code...' : deactivateAccountText}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Verification Code Modal */}
+      <Modal
+        visible={showVerificationModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowVerificationModal(false);
+          setVerificationCode("");
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{verificationModalTitle}</Text>
+            <Text style={styles.modalDescription}>{verificationModalDescription}</Text>
+            
+            <TextInput
+              style={styles.codeInput}
+              value={verificationCode}
+              onChangeText={setVerificationCode}
+              placeholder={verificationCodePlaceholder}
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus={true}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowVerificationModal(false);
+                  setVerificationCode("");
+                }}
+                disabled={isVerifyingCode}
+              >
+                <Text style={styles.modalCancelButtonText}>{cancelButtonText}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalVerifyButton}
+                onPress={handleVerifyAndDeactivate}
+                disabled={isVerifyingCode || verificationCode.length !== 6}
+              >
+                <Text style={styles.modalVerifyButtonText}>
+                  {isVerifyingCode ? verifyingText : verifyButtonText}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -325,7 +400,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 4,
   },
-  dangerSectionTitle: {
+  accountManagementTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#FF3B30',
@@ -385,5 +460,78 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  codeInput: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+    letterSpacing: 8,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: colors.backgroundAlt,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalVerifyButton: {
+    flex: 1,
+    backgroundColor: '#FF3B30',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalVerifyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.background,
   },
 });
