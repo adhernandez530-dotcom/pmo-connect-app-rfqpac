@@ -271,3 +271,31 @@ export const conversationMessages = pgTable('conversation_messages', {
   content: text('content').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+/**
+ * User Privacy Settings
+ * Control over profile visibility, messaging, and interactions
+ */
+export const userPrivacySettings = pgTable(
+  'user_privacy_settings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    profileVisibility: text('profile_visibility').default('public').notNull(), // 'public' or 'private'
+    messagePermission: text('message_permission').default('anyone').notNull(), // 'anyone', 'mutual_friends', or 'friends_only'
+    servicesVisibility: text('services_visibility').default('everyone').notNull(), // 'everyone', 'friends_only', or 'only_me'
+    friendsListVisibility: text('friends_list_visibility').default('everyone').notNull(), // 'everyone', 'friends_only', or 'only_me'
+    tagPermission: text('tag_permission').default('anyone').notNull(), // 'anyone', 'friends_only', or 'no_one'
+    commentPermission: text('comment_permission').default('anyone').notNull(), // 'anyone', 'friends_only', or 'no_one'
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    userIdUnique: unique().on(table.userId),
+  })
+);
