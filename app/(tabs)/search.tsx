@@ -31,13 +31,46 @@ export default function SearchScreen() {
   const [filter, setFilter] = useState<FilterType>('friends');
   const [locationFilter, setLocationFilter] = useState<LocationFilter>('anywhere');
 
-  const loadPopularSkills = useCallback(async () => {
-    console.log('SearchScreen: Fetching popular skills');
-    try {
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/search/skills?popular=true`);
-      if (!response.ok) {
-        console.log('SearchScreen: API returned error status:', response.status);
-        // Fallback to default skills if API fails
+  useEffect(() => {
+    const loadPopularSkills = async () => {
+      console.log('SearchScreen: Fetching popular skills');
+      try {
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/search/skills?popular=true`);
+        if (!response.ok) {
+          console.log('SearchScreen: API returned error status:', response.status);
+          setPopularSkills([
+            'Project Management',
+            'DJ Services',
+            'Cooking',
+            'Web Development',
+            'Graphic Design',
+            'Photography',
+            'Music Production',
+            'Video Editing',
+          ]);
+          return;
+        }
+        const data = await response.json();
+        console.log('SearchScreen: Popular skills response:', data);
+        
+        if (Array.isArray(data)) {
+          const skillNames = data.map((skill: any) => skill.skillName || skill.name || skill);
+          setPopularSkills(skillNames);
+        } else {
+          console.log('SearchScreen: API returned non-array data, using fallback skills');
+          setPopularSkills([
+            'Project Management',
+            'DJ Services',
+            'Cooking',
+            'Web Development',
+            'Graphic Design',
+            'Photography',
+            'Music Production',
+            'Video Editing',
+          ]);
+        }
+      } catch (error) {
+        console.error('SearchScreen: Error loading popular skills:', error);
         setPopularSkills([
           'Project Management',
           'DJ Services',
@@ -48,94 +81,58 @@ export default function SearchScreen() {
           'Music Production',
           'Video Editing',
         ]);
-        return;
       }
-      const data = await response.json();
-      console.log('SearchScreen: Popular skills response:', data);
-      
-      if (Array.isArray(data)) {
-        // Extract skill names from the response
-        const skillNames = data.map((skill: any) => skill.skillName || skill.name || skill);
-        setPopularSkills(skillNames);
-      } else {
-        console.log('SearchScreen: API returned non-array data, using fallback skills');
-        // Fallback to default skills if API fails
-        setPopularSkills([
-          'Project Management',
-          'DJ Services',
-          'Cooking',
-          'Web Development',
-          'Graphic Design',
-          'Photography',
-          'Music Production',
-          'Video Editing',
-        ]);
-      }
-    } catch (error) {
-      console.error('SearchScreen: Error loading popular skills:', error);
-      // Fallback to default skills if API fails
-      setPopularSkills([
-        'Project Management',
-        'DJ Services',
-        'Cooking',
-        'Web Development',
-        'Graphic Design',
-        'Photography',
-        'Music Production',
-        'Video Editing',
-      ]);
-    }
+    };
+
+    console.log('SearchScreen: Loading popular skills on mount');
+    loadPopularSkills();
   }, []);
 
-  const performSearch = useCallback(async () => {
-    setIsSearching(true);
-    console.log('SearchScreen: Performing search for:', searchQuery);
-    
-    try {
-      const queryParams = new URLSearchParams({
-        query: searchQuery,
-        filter: filter,
-        location: locationFilter,
-      });
-      
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/search/users?${queryParams.toString()}`);
-      if (!response.ok) {
-        console.log('SearchScreen: API returned error status:', response.status);
+  useEffect(() => {
+    const performSearch = async () => {
+      if (searchQuery.length === 0) {
         setSearchResults([]);
         setIsSearching(false);
         return;
       }
-      const data = await response.json();
-      console.log('SearchScreen: Search results response:', data);
+
+      setIsSearching(true);
+      console.log('SearchScreen: Performing search for:', searchQuery);
       
-      if (Array.isArray(data)) {
-        setSearchResults(data);
-      } else {
-        console.log('SearchScreen: API returned non-array data:', data);
+      try {
+        const queryParams = new URLSearchParams({
+          query: searchQuery,
+          filter: filter,
+          location: locationFilter,
+        });
+        
+        const response = await authenticatedFetch(`${BACKEND_URL}/api/search/users?${queryParams.toString()}`);
+        if (!response.ok) {
+          console.log('SearchScreen: API returned error status:', response.status);
+          setSearchResults([]);
+          setIsSearching(false);
+          return;
+        }
+        const data = await response.json();
+        console.log('SearchScreen: Search results response:', data);
+        
+        if (Array.isArray(data)) {
+          setSearchResults(data);
+        } else {
+          console.log('SearchScreen: API returned non-array data:', data);
+          setSearchResults([]);
+        }
+      } catch (error) {
+        console.error('SearchScreen: Error performing search:', error);
         setSearchResults([]);
+      } finally {
+        setIsSearching(false);
       }
-    } catch (error) {
-      console.error('SearchScreen: Error performing search:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
+    };
+
+    console.log('SearchScreen: Search query or filters changed');
+    performSearch();
   }, [searchQuery, filter, locationFilter]);
-
-  useEffect(() => {
-    console.log('SearchScreen: Loading popular skills');
-    loadPopularSkills();
-  }, [loadPopularSkills]);
-
-  useEffect(() => {
-    if (searchQuery.length > 0) {
-      console.log('SearchScreen: Searching for:', searchQuery, 'with filter:', filter, locationFilter);
-      performSearch();
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  }, [searchQuery, filter, locationFilter, performSearch]);
 
   const handleSkillPress = (skill: string) => {
     console.log('SearchScreen: User tapped skill:', skill);
