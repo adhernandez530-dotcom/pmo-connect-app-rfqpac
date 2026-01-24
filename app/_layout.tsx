@@ -57,7 +57,7 @@ function RootLayoutNav() {
         const BACKEND_URL = Constants.default.expoConfig?.extra?.backendUrl || "http://localhost:3000";
         const { authenticatedGet } = await import("@/utils/api");
         
-        const profile = await authenticatedGet(`${BACKEND_URL}/api/profile`);
+        const profile = await authenticatedGet(`${BACKEND_URL}/api/users/me`);
         console.log("RootLayout: Profile data:", profile);
 
         if (!profile.onboardingCompleted) {
