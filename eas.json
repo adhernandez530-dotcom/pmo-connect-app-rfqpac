@@ -7,32 +7,7 @@
       "autoIncrement": true,
       "ios": {
         "simulator": false,
-        "appleTeamId": "{
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "autoIncrement": true,
-      "ios": {
-        "simulator": false,
-        "appleTeamId": "YOUR_TEAM_ID_HERE"
-      }
-    },
-    "preview": {
-      "distribution": "internal",
-      "autoIncrement": true,
-      "ios": {
-        "appleTeamId": "YOUR_TEAM_ID_HERE"
-      }
-    },
-    "production": {
-      "autoIncrement": true,
-      "ios": {
-        "appleTeamId": "YOUR_TEAM_ID_HERE"
-      }
-    }
-  }
-}"
+        "appleTeamId": "44493K2G8U"
       }
     },
     "preview": {
