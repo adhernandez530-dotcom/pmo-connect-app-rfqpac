@@ -56,12 +56,12 @@ export const apiCall = async <T = any>(
   console.log("[API] Calling:", url, options?.method || "GET");
 
   try {
+    // Don't override headers if they're already set (important for FormData)
+    const headers = options?.headers || {};
+    
     const response = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -155,9 +155,14 @@ export const authenticatedApiCall = async <T = any>(
     throw new Error("Authentication token not found. Please sign in.");
   }
 
+  // Check if body is FormData to avoid setting Content-Type
+  const isFormData = options?.body instanceof FormData;
+
   return apiCall<T>(endpoint, {
     ...options,
     headers: {
+      // Don't override Content-Type if it's FormData or already set
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...options?.headers,
       Authorization: `Bearer ${token}`,
     },
@@ -173,14 +178,25 @@ export const authenticatedGet = async <T = any>(endpoint: string): Promise<T> =>
 
 /**
  * Authenticated POST request
+ * Supports both JSON and FormData
  */
 export const authenticatedPost = async <T = any>(
   endpoint: string,
-  data: any
+  data: any,
+  options?: RequestInit
 ): Promise<T> => {
+  // Check if data is FormData
+  const isFormData = data instanceof FormData;
+  
   return authenticatedApiCall<T>(endpoint, {
     method: "POST",
-    body: JSON.stringify(data),
+    body: isFormData ? data : JSON.stringify(data),
+    ...options,
+    headers: {
+      // Don't set Content-Type for FormData - browser will set it with boundary
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...options?.headers,
+    },
   });
 };
 

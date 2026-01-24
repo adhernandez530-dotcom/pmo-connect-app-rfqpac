@@ -249,7 +249,8 @@ export default function EditProfileScreen() {
       fullName,
       location,
       bio,
-      avatarUrl: localAvatarUri || avatarUrl,
+      localAvatarUri,
+      avatarUrl,
     });
     
     if (!fullName.trim()) {
@@ -261,14 +262,51 @@ export default function EditProfileScreen() {
     setSaving(true);
     console.log('EditProfileScreen: Saving profile changes...');
     try {
+      let finalAvatarUrl = avatarUrl;
+
+      // If user selected a new local image, upload it first
+      if (localAvatarUri) {
+        console.log('EditProfileScreen: Uploading new avatar image:', localAvatarUri);
+        try {
+          const formData = new FormData();
+          const filename = localAvatarUri.split('/').pop() || 'avatar.jpg';
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : 'image/jpeg';
+          
+          formData.append('image', {
+            uri: localAvatarUri,
+            name: filename,
+            type: type,
+          } as any);
+
+          console.log('EditProfileScreen: Sending avatar upload request');
+          const uploadResponse = await authenticatedPost('/api/users/avatar', formData);
+          
+          console.log('EditProfileScreen: Avatar uploaded successfully', uploadResponse);
+          
+          if (uploadResponse && uploadResponse.url) {
+            finalAvatarUrl = uploadResponse.url;
+            console.log('EditProfileScreen: New avatar URL:', finalAvatarUrl);
+          } else {
+            console.warn('EditProfileScreen: Avatar upload response missing URL, using local URI');
+            finalAvatarUrl = localAvatarUri;
+          }
+        } catch (uploadError) {
+          console.error('EditProfileScreen: Error uploading avatar:', uploadError);
+          const uploadErrorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
+          console.error('EditProfileScreen: Upload error details:', uploadErrorMessage);
+          Alert.alert('Warning', 'Failed to upload avatar image. Continuing with profile update.');
+        }
+      }
+
       const updateData = {
         username: username.trim(),
         fullName: fullName.trim(),
         location: location.trim(),
         bio: bio.trim(),
-        avatarUrl: localAvatarUri || avatarUrl || '',
+        avatarUrl: finalAvatarUrl || '',
       };
-      console.log('EditProfileScreen: Sending update data:', updateData);
+      console.log('EditProfileScreen: Sending profile update data:', updateData);
       
       const data = await authenticatedPut('/api/users/me', updateData);
       console.log('EditProfileScreen: Profile updated successfully', data);
