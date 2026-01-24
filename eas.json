@@ -6,22 +6,15 @@
       "distribution": "internal",
       "autoIncrement": true,
       "ios": {
-        "simulator": false,
-        "appleTeamId": "44493K2G8U"
+        "simulator": false
       }
     },
     "preview": {
       "distribution": "internal",
-      "autoIncrement": true,
-      "ios": {
-        "appleTeamId": "44493K2G8U"
-      }
+      "autoIncrement": true
     },
     "production": {
-      "autoIncrement": true,
-      "ios": {
-        "appleTeamId": "44493K2G8U"
-      }
+      "autoIncrement": true
     }
   }
 }
