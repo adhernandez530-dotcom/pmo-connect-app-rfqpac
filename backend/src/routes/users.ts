@@ -122,23 +122,38 @@ export function registerUserRoutes(app: App) {
     app.logger.info({ userId: session.user.id }, 'Uploading avatar');
 
     try {
-      const data = await request.file();
+      const options = { limits: { fileSize: 10 * 1024 * 1024 } }; // 10MB limit
+      const data = await request.file(options);
       if (!data) {
         app.logger.warn({ userId: session.user.id }, 'No file provided in avatar upload');
         return reply.status(400).send({ error: 'No file provided' });
       }
 
-      const buffer = await data.toBuffer();
-      const fileName = `avatar-${session.user.id}-${Date.now()}`;
+      let buffer: Buffer;
+      try {
+        buffer = await data.toBuffer();
+      } catch (err) {
+        app.logger.warn({ userId: session.user.id }, 'Avatar file exceeds size limit');
+        return reply.status(413).send({ error: 'File too large (max 10MB)' });
+      }
+
+      // Validate image type
       const mimeType = data.mimetype;
+      if (!mimeType.startsWith('image/')) {
+        app.logger.warn({ userId: session.user.id, mimeType }, 'Invalid file type for avatar');
+        return reply.status(400).send({ error: 'File must be an image' });
+      }
 
-      // Store in memory for now (in production would use S3)
-      // Simulate URL generation
-      const avatarUrl = `/uploads/avatars/${fileName}`;
+      // Upload to storage
+      const storageKey = `avatars/${session.user.id}/${Date.now()}-${data.filename}`;
+      const key = await app.storage.upload(storageKey, buffer);
 
-      app.logger.info({ userId: session.user.id, fileName }, 'Avatar file received');
+      // Generate signed URL
+      const { url } = await app.storage.getSignedUrl(key);
 
-      return { avatarUrl };
+      app.logger.info({ userId: session.user.id, storageKey: key }, 'Avatar uploaded successfully');
+
+      return { url, key };
     } catch (error) {
       app.logger.error({ err: error, userId: session.user.id }, 'Failed to upload avatar');
       throw error;

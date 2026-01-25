@@ -20,6 +20,7 @@ import { registerNotificationsExtendedRoutes } from './routes/notifications-exte
 import { registerAccountRoutes } from './routes/account.js';
 import { registerGroupChatRoutes } from './routes/group-chat.js';
 import { registerPrivacySettingsRoutes } from './routes/privacy-settings.js';
+import { registerUploadRoutes } from './routes/upload.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -30,8 +31,9 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
-// Enable authentication
+// Enable authentication and storage
 app.withAuth();
+app.withStorage();
 
 // Register routes - IMPORTANT: Always use registration functions to avoid circular dependency issues
 registerInitRoutes(app);
@@ -51,6 +53,7 @@ registerNotificationsExtendedRoutes(app);
 registerAccountRoutes(app);
 registerGroupChatRoutes(app);
 registerPrivacySettingsRoutes(app);
+registerUploadRoutes(app);
 
 await app.run();
 app.logger.info('PUT ME ON app running successfully');

@@ -101,41 +101,115 @@ export function registerPostRoutes(app: App) {
 
   /**
    * POST /api/posts
-   * Create a new post
+   * Create a new post with optional media upload
+   * Accepts: multipart form data with 'content' (text) and 'media' (optional file)
+   * Or: JSON body with 'content' (text), 'mediaUrl' (string), and 'mediaType' (string)
    */
   app.fastify.post('/api/posts', async (request: FastifyRequest, reply: FastifyReply) => {
     const session = await requireAuth(request, reply);
     if (!session) return;
 
-    const { content, mediaUrl, mediaType } = request.body as {
-      content?: string;
-      mediaUrl?: string;
-      mediaType?: string;
-    };
-
-    app.logger.info({ userId: session.user.id, hasMedia: !!mediaUrl }, 'Creating post');
+    app.logger.info({ userId: session.user.id }, 'Creating post');
 
     try {
+      let content: string | null = null;
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+
+      // Check if this is multipart (file upload) or JSON
+      const contentType = request.headers['content-type'];
+
+      if (contentType?.includes('multipart/form-data')) {
+        // Handle multipart form data
+        const parts = request.parts();
+
+        for await (const part of parts) {
+          if (part.type === 'field') {
+            if (part.fieldname === 'content') {
+              content = part.value as string;
+            }
+          } else if (part.type === 'file' && part.fieldname === 'media') {
+            const file = part;
+
+            // Get file buffer
+            let buffer: Buffer;
+            try {
+              const chunks: Buffer[] = [];
+              for await (const chunk of file.file) {
+                chunks.push(chunk);
+              }
+              buffer = Buffer.concat(chunks);
+            } catch (err) {
+              app.logger.warn({ userId: session.user.id }, 'Media file exceeds size limit');
+              return reply.status(413).send({ error: 'File too large' });
+            }
+
+            // Determine media type from MIME type
+            const mimeType = file.mimetype;
+            if (mimeType.startsWith('image/')) {
+              mediaType = 'image';
+            } else if (mimeType.startsWith('video/')) {
+              mediaType = 'video';
+            } else if (mimeType.startsWith('audio/')) {
+              mediaType = 'audio';
+            } else {
+              app.logger.warn({ userId: session.user.id, mimeType }, 'Unsupported media type');
+              return reply.status(400).send({ error: 'Unsupported media type' });
+            }
+
+            // Upload to storage
+            const directory = mediaType === 'image' ? 'images' : mediaType === 'video' ? 'videos' : 'audio';
+            const storageKey = `posts/${directory}/${session.user.id}/${Date.now()}-${file.filename}`;
+            const key = await app.storage.upload(storageKey, buffer);
+
+            // Generate signed URL
+            const { url } = await app.storage.getSignedUrl(key);
+            mediaUrl = url;
+
+            app.logger.info(
+              { userId: session.user.id, storageKey: key, mediaType },
+              'Post media uploaded'
+            );
+          }
+        }
+      } else {
+        // Handle JSON body
+        const body = request.body as {
+          content?: string;
+          mediaUrl?: string;
+          mediaType?: string;
+        };
+
+        content = body.content || null;
+        mediaUrl = body.mediaUrl || null;
+        mediaType = body.mediaType || null;
+      }
+
+      // Validate post has content or media
       if (!content && !mediaUrl) {
         app.logger.warn({ userId: session.user.id }, 'Post must have content or media');
         return reply.status(400).send({ error: 'Post must have content or media' });
       }
 
+      // Create post in database
       const post = await app.db
         .insert(schema.posts)
         .values({
           userId: session.user.id,
-          content: content || null,
-          mediaUrl: mediaUrl || null,
-          mediaType: mediaType || null,
+          content: content,
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
         })
         .returning();
 
-      app.logger.info({ userId: session.user.id, postId: post[0].id }, 'Post created successfully');
+      app.logger.info(
+        { userId: session.user.id, postId: post[0].id, hasMedia: !!mediaUrl },
+        'Post created successfully'
+      );
       return post[0];
     } catch (error) {
       app.logger.error(
-        { err: error, userId: session.user.id, content, mediaUrl },
+        { err: error, userId: session.user.id },
         'Failed to create post'
       );
       throw error;
@@ -184,6 +258,7 @@ export function registerPostRoutes(app: App) {
   /**
    * POST /api/posts/media
    * Upload post media - multipart form data with 'media' field
+   * Returns: { url: string, mediaType: 'image' | 'video' | 'audio', key: string }
    */
   app.fastify.post('/api/posts/media', async (request: FastifyRequest, reply: FastifyReply) => {
     const session = await requireAuth(request, reply);
@@ -192,31 +267,42 @@ export function registerPostRoutes(app: App) {
     app.logger.info({ userId: session.user.id }, 'Uploading post media');
 
     try {
-      const data = await request.file();
+      const options = { limits: { fileSize: 100 * 1024 * 1024 } }; // 100MB limit
+      const data = await request.file(options);
       if (!data) {
         app.logger.warn({ userId: session.user.id }, 'No file provided in media upload');
         return reply.status(400).send({ error: 'No file provided' });
       }
 
-      const buffer = await data.toBuffer();
+      let buffer: Buffer;
+      try {
+        buffer = await data.toBuffer();
+      } catch (err) {
+        app.logger.warn({ userId: session.user.id }, 'Media file exceeds size limit');
+        return reply.status(413).send({ error: 'File too large (max 100MB)' });
+      }
+
       const mimeType = data.mimetype;
-      const fileName = `media-${session.user.id}-${Date.now()}`;
 
       // Determine media type from mime type
-      let mediaType = 'photo';
+      let mediaType: 'image' | 'video' | 'audio' = 'image';
       if (mimeType.startsWith('video/')) mediaType = 'video';
       else if (mimeType.startsWith('audio/')) mediaType = 'audio';
 
-      // Store in memory for now (in production would use S3)
-      // Simulate URL generation
-      const mediaUrl = `/uploads/media/${fileName}`;
+      // Upload to storage
+      const directory = mediaType === 'image' ? 'images' : mediaType === 'video' ? 'videos' : 'audio';
+      const storageKey = `posts/${directory}/${session.user.id}/${Date.now()}-${data.filename}`;
+      const key = await app.storage.upload(storageKey, buffer);
+
+      // Generate signed URL
+      const { url } = await app.storage.getSignedUrl(key);
 
       app.logger.info(
-        { userId: session.user.id, fileName, mediaType },
-        'Media file received'
+        { userId: session.user.id, storageKey: key, mediaType, filename: data.filename },
+        'Post media uploaded successfully'
       );
 
-      return { mediaUrl, mediaType };
+      return { url, mediaType, key };
     } catch (error) {
       app.logger.error({ err: error, userId: session.user.id }, 'Failed to upload media');
       throw error;
