@@ -24,7 +24,7 @@ import { colors } from "@/styles/commonStyles";
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  initialRouteName: "(tabs)", // Ensure any route can link back to `/`
+  initialRouteName: "auth", // Start with auth screen to prevent flash of home screen
 };
 
 function RootLayoutNav() {
@@ -33,53 +33,12 @@ function RootLayoutNav() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const [checkingOnboarding, setCheckingOnboarding] = React.useState(false);
-  const [onboardingChecked, setOnboardingChecked] = React.useState(false);
+  const [onboardingStatus, setOnboardingStatus] = React.useState<{
+    checked: boolean;
+    completed: boolean;
+  }>({ checked: false, completed: false });
 
-  // Check if user has completed onboarding
-  React.useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      if (!user || loading || checkingOnboarding || onboardingChecked) {
-        return;
-      }
-
-      const inOnboarding = segments[0] === "onboarding";
-      if (inOnboarding) {
-        setOnboardingChecked(true);
-        return;
-      }
-
-      setCheckingOnboarding(true);
-      console.log("RootLayout: Checking onboarding status for user:", user.email);
-
-      try {
-        const Constants = await import("expo-constants");
-        const BACKEND_URL = Constants.default.expoConfig?.extra?.backendUrl || "http://localhost:3000";
-        const { authenticatedGet } = await import("@/utils/api");
-        
-        const profile = await authenticatedGet(`${BACKEND_URL}/api/users/me`);
-        console.log("RootLayout: Profile data:", profile);
-
-        if (!profile.onboardingCompleted) {
-          console.log("RootLayout: Onboarding not completed, redirecting to /onboarding");
-          router.replace("/onboarding");
-        } else {
-          console.log("RootLayout: Onboarding completed");
-        }
-        setOnboardingChecked(true);
-      } catch (error) {
-        console.error("RootLayout: Error checking onboarding status:", error);
-        // If we can't check, assume onboarding is needed
-        router.replace("/onboarding");
-        setOnboardingChecked(true);
-      } finally {
-        setCheckingOnboarding(false);
-      }
-    };
-
-    checkOnboardingStatus();
-  }, [user, loading, segments, checkingOnboarding, onboardingChecked]);
-
+  // Main authentication and routing logic
   React.useEffect(() => {
     if (loading) {
       console.log("RootLayout: Auth loading, waiting...");
@@ -91,15 +50,59 @@ function RootLayoutNav() {
 
     console.log("RootLayout: Auth check - user:", user?.email, "inAuthGroup:", inAuthGroup, "inOnboarding:", inOnboarding, "segments:", segments);
 
+    // If no user and not in auth screens, redirect to auth
     if (!user && !inAuthGroup) {
       console.log("RootLayout: User not authenticated, redirecting to /auth");
+      setOnboardingStatus({ checked: false, completed: false }); // Reset onboarding status
       router.replace("/auth");
-    } else if (user && inAuthGroup) {
-      console.log("RootLayout: User authenticated, checking onboarding status");
-      // Don't redirect here - let the onboarding check handle it
-      setOnboardingChecked(false); // Reset to trigger onboarding check
+      return;
+    }
+
+    // If user exists and we're in auth screens, check onboarding
+    if (user && inAuthGroup) {
+      console.log("RootLayout: User authenticated in auth screen, checking onboarding status");
+      checkOnboardingAndRedirect();
+      return;
+    }
+
+    // If user exists and not in onboarding, verify onboarding is complete
+    if (user && !inOnboarding && !onboardingStatus.checked) {
+      console.log("RootLayout: User authenticated, verifying onboarding status");
+      checkOnboardingAndRedirect();
     }
   }, [user, loading, segments]);
+
+  const checkOnboardingAndRedirect = async () => {
+    if (!user || onboardingStatus.checked) {
+      return;
+    }
+
+    console.log("RootLayout: Checking onboarding status for user:", user.email);
+
+    try {
+      const Constants = await import("expo-constants");
+      const BACKEND_URL = Constants.default.expoConfig?.extra?.backendUrl || "http://localhost:3000";
+      const { authenticatedGet } = await import("@/utils/api");
+      
+      const profile = await authenticatedGet(`${BACKEND_URL}/api/users/me`);
+      console.log("RootLayout: Profile data:", profile);
+
+      setOnboardingStatus({ checked: true, completed: profile.onboardingCompleted });
+
+      if (!profile.onboardingCompleted) {
+        console.log("RootLayout: Onboarding not completed, redirecting to /onboarding");
+        router.replace("/onboarding");
+      } else {
+        console.log("RootLayout: Onboarding completed, redirecting to home");
+        router.replace("/(tabs)/(home)");
+      }
+    } catch (error) {
+      console.error("RootLayout: Error checking onboarding status:", error);
+      // If we can't check, assume onboarding is needed
+      setOnboardingStatus({ checked: true, completed: false });
+      router.replace("/onboarding");
+    }
+  };
 
   React.useEffect(() => {
     if (
@@ -160,6 +163,8 @@ function RootLayoutNav() {
               <Stack.Screen name="auth" options={{ headerShown: false }} />
               <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
               <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+              {/* Onboarding screen */}
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
               {/* Main app with tabs */}
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               {/* Chat screen */}
@@ -184,8 +189,6 @@ function RootLayoutNav() {
               <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
               {/* Terms of Service screen */}
               <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
-              {/* Onboarding screen */}
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             </Stack>
             <SystemBars style={"auto"} />
             </GestureHandlerRootView>

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   View,
@@ -12,12 +13,10 @@ import {
   ScrollView,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "expo-router";
 
 type Mode = "signin" | "signup";
 
 export default function AuthScreen() {
-  const router = useRouter();
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, signInWithGitHub, loading: authLoading } =
     useAuth();
 
@@ -31,6 +30,7 @@ export default function AuthScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -44,14 +44,18 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       if (mode === "signin") {
+        console.log("User signing in with email:", email);
         await signInWithEmail(email, password);
-        router.replace("/");
+        console.log("Sign in successful - root layout will handle navigation");
+        // Don't manually navigate - let the root layout handle it based on auth state
       } else {
+        console.log("User signing up with email:", email);
         await signUpWithEmail(email, password, name);
-        console.log("User registered successfully, redirecting to onboarding");
-        router.replace("/onboarding");
+        console.log("Sign up successful - root layout will redirect to onboarding");
+        // Don't manually navigate - let the root layout handle it based on auth state
       }
     } catch (error: any) {
+      console.error("Authentication error:", error);
       Alert.alert("Error", error.message || "Authentication failed");
     } finally {
       setLoading(false);
@@ -61,6 +65,7 @@ export default function AuthScreen() {
   const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
     setLoading(true);
     try {
+      console.log("User signing in with", provider);
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
@@ -68,16 +73,21 @@ export default function AuthScreen() {
       } else if (provider === "github") {
         await signInWithGitHub();
       }
-      // Note: Social auth users should also go through onboarding if they haven't completed it
-      // The backend will check onboardingCompleted status
-      console.log("Social auth successful, redirecting to onboarding");
-      router.replace("/onboarding");
+      console.log("Social auth successful - root layout will handle navigation");
+      // Don't manually navigate - let the root layout handle it based on auth state
     } catch (error: any) {
+      console.error("Social auth error:", error);
       Alert.alert("Error", error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
   };
+
+  const titleText = mode === "signin" ? "Sign In" : "Sign Up";
+  const primaryButtonText = mode === "signin" ? "Sign In" : "Sign Up";
+  const switchModeText = mode === "signin"
+    ? "Don't have an account? Sign Up"
+    : "Already have an account? Sign In";
 
   return (
     <KeyboardAvoidingView
@@ -87,7 +97,7 @@ export default function AuthScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>
-            {mode === "signin" ? "Sign In" : "Sign Up"}
+            {titleText}
           </Text>
 
           {mode === "signup" && (
@@ -128,7 +138,7 @@ export default function AuthScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryButtonText}>
-                {mode === "signin" ? "Sign In" : "Sign Up"}
+                {primaryButtonText}
               </Text>
             )}
           </TouchableOpacity>
@@ -138,9 +148,7 @@ export default function AuthScreen() {
             onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
           >
             <Text style={styles.switchModeText}>
-              {mode === "signin"
-                ? "Don't have an account? Sign Up"
-                : "Already have an account? Sign In"}
+              {switchModeText}
             </Text>
           </TouchableOpacity>
 
@@ -185,6 +193,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
   },
   scrollContent: {
     flexGrow: 1,
