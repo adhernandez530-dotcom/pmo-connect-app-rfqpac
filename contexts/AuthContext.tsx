@@ -98,39 +98,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     try {
       console.log("AuthContext: Signing in with email:", email);
-      await authClient.signIn.email({ email, password });
+      const result = await authClient.signIn.email({ email, password });
+      console.log("AuthContext: Sign in API call completed, result:", result);
       await fetchUser();
       console.log("AuthContext: Sign in successful");
-    } catch (error) {
+    } catch (error: any) {
       console.error("AuthContext: Email sign in failed:", error);
-      throw error;
+      // Extract meaningful error message
+      const errorMessage = error?.body?.message || error?.message || "Sign in failed. Please check your credentials.";
+      throw new Error(errorMessage);
     }
   };
 
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
-      console.log("AuthContext: Signing up with email:", email);
-      await authClient.signUp.email({
+      console.log("AuthContext: Signing up with email:", email, "name:", name);
+      const result = await authClient.signUp.email({
         email,
         password,
-        name,
+        name: name || undefined,
       });
+      console.log("AuthContext: Sign up API call completed, result:", result);
       await fetchUser();
       console.log("AuthContext: Sign up successful, user should be redirected to onboarding");
-    } catch (error) {
+    } catch (error: any) {
       console.error("AuthContext: Email sign up failed:", error);
-      throw error;
+      // Extract meaningful error message
+      const errorMessage = error?.body?.message || error?.message || "Sign up failed. Please try again.";
+      throw new Error(errorMessage);
     }
   };
 
   const signInWithSocial = async (provider: "google" | "apple" | "github") => {
     try {
-      console.log("AuthContext: Signing in with", provider);
+      console.log("AuthContext: Signing in with", provider, "on platform:", Platform.OS);
       if (Platform.OS === "web") {
+        console.log("AuthContext: Opening OAuth popup for", provider);
         const token = await openOAuthPopup(provider);
+        console.log("AuthContext: OAuth popup returned token");
         storeWebBearerToken(token);
         await fetchUser();
       } else {
+        console.log("AuthContext: Starting native OAuth flow for", provider);
         await authClient.signIn.social({
           provider,
           callbackURL: "/",
@@ -138,9 +147,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await fetchUser();
       }
       console.log("AuthContext:", provider, "sign in successful");
-    } catch (error) {
+    } catch (error: any) {
       console.error(`AuthContext: ${provider} sign in failed:`, error);
-      throw error;
+      // Extract meaningful error message
+      const errorMessage = error?.message || `${provider} sign in failed. Please try again.`;
+      throw new Error(errorMessage);
     }
   };
 

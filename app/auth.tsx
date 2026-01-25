@@ -27,17 +27,25 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
 
   if (authLoading) {
+    const loadingText = "Loading...";
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>{loadingText}</Text>
       </View>
     );
   }
 
   const handleEmailAuth = async () => {
+    console.log("User tapped email auth button - mode:", mode);
+    
     if (!email || !password) {
       Alert.alert("Error", "Please enter email and password");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
 
@@ -47,25 +55,25 @@ export default function AuthScreen() {
         console.log("User signing in with email:", email);
         await signInWithEmail(email, password);
         console.log("Sign in successful - root layout will handle navigation");
-        // Don't manually navigate - let the root layout handle it based on auth state
       } else {
-        console.log("User signing up with email:", email);
-        await signUpWithEmail(email, password, name);
+        console.log("User signing up with email:", email, "name:", name || "(none)");
+        await signUpWithEmail(email, password, name || undefined);
         console.log("Sign up successful - root layout will redirect to onboarding");
-        // Don't manually navigate - let the root layout handle it based on auth state
       }
     } catch (error: any) {
       console.error("Authentication error:", error);
-      Alert.alert("Error", error.message || "Authentication failed");
+      const errorMessage = error.message || error.toString() || "Authentication failed";
+      Alert.alert("Authentication Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
+    console.log("User tapped social auth button - provider:", provider);
     setLoading(true);
     try {
-      console.log("User signing in with", provider);
+      console.log("Starting", provider, "sign in flow");
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
@@ -74,20 +82,33 @@ export default function AuthScreen() {
         await signInWithGitHub();
       }
       console.log("Social auth successful - root layout will handle navigation");
-      // Don't manually navigate - let the root layout handle it based on auth state
     } catch (error: any) {
       console.error("Social auth error:", error);
-      Alert.alert("Error", error.message || "Authentication failed");
+      const errorMessage = error.message || error.toString() || "Authentication failed";
+      Alert.alert("Authentication Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const titleText = mode === "signin" ? "Sign In" : "Sign Up";
+  const handleSwitchMode = () => {
+    console.log("User tapped switch mode button - current mode:", mode);
+    const newMode = mode === "signin" ? "signup" : "signin";
+    setMode(newMode);
+    console.log("Switched to mode:", newMode);
+  };
+
+  const titleText = mode === "signin" ? "Welcome Back" : "Create Account";
+  const subtitleText = mode === "signin" 
+    ? "Sign in to continue" 
+    : "Sign up to get started";
   const primaryButtonText = mode === "signin" ? "Sign In" : "Sign Up";
   const switchModeText = mode === "signin"
     ? "Don't have an account? Sign Up"
     : "Already have an account? Sign In";
+  const dividerText = "or continue with";
+  const googleButtonText = "Continue with Google";
+  const appleButtonText = "Continue with Apple";
 
   return (
     <KeyboardAvoidingView
@@ -96,9 +117,8 @@ export default function AuthScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text style={styles.title}>
-            {titleText}
-          </Text>
+          <Text style={styles.title}>{titleText}</Text>
+          <Text style={styles.subtitle}>{subtitleText}</Text>
 
           {mode === "signup" && (
             <TextInput
@@ -107,6 +127,7 @@ export default function AuthScreen() {
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
+              editable={!loading}
             />
           )}
 
@@ -118,15 +139,17 @@ export default function AuthScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            editable={!loading}
           />
 
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="Password (min 6 characters)"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
+            editable={!loading}
           />
 
           <TouchableOpacity
@@ -137,43 +160,40 @@ export default function AuthScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.primaryButtonText}>
-                {primaryButtonText}
-              </Text>
+              <Text style={styles.primaryButtonText}>{primaryButtonText}</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.switchModeButton}
-            onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
+            onPress={handleSwitchMode}
+            disabled={loading}
           >
-            <Text style={styles.switchModeText}>
-              {switchModeText}
-            </Text>
+            <Text style={styles.switchModeText}>{switchModeText}</Text>
           </TouchableOpacity>
 
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
+            <Text style={styles.dividerText}>{dividerText}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           <TouchableOpacity
-            style={styles.socialButton}
+            style={[styles.socialButton, loading && styles.buttonDisabled]}
             onPress={() => handleSocialAuth("google")}
             disabled={loading}
           >
-            <Text style={styles.socialButtonText}>Continue with Google</Text>
+            <Text style={styles.socialButtonText}>{googleButtonText}</Text>
           </TouchableOpacity>
 
           {Platform.OS === "ios" && (
             <TouchableOpacity
-              style={[styles.socialButton, styles.appleButton]}
+              style={[styles.socialButton, styles.appleButton, loading && styles.buttonDisabled]}
               onPress={() => handleSocialAuth("apple")}
               disabled={loading}
             >
               <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                Continue with Apple
+                {appleButtonText}
               </Text>
             </TouchableOpacity>
           )}
@@ -206,13 +226,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: "center",
+    maxWidth: 400,
+    width: "100%",
+    alignSelf: "center",
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 32,
+    marginBottom: 8,
     textAlign: "center",
     color: "#000",
+  },
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 32,
+    textAlign: "center",
+    color: "#666",
   },
   input: {
     height: 50,
@@ -231,6 +260,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   primaryButtonText: {
     color: "#fff",
@@ -242,11 +276,13 @@ const styles = StyleSheet.create({
   },
   switchModeButton: {
     marginTop: 16,
+    padding: 8,
     alignItems: "center",
   },
   switchModeText: {
     color: "#007AFF",
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "500",
   },
   divider: {
     flexDirection: "row",
