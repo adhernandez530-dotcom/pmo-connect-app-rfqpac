@@ -16,6 +16,22 @@ import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { authenticatedPost, authenticatedGet } from "@/utils/api";
+import { Camera } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
+import * as Contacts from "expo-contacts";
+import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
+
+type PermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+interface PermissionState {
+  camera: PermissionStatus;
+  microphone: PermissionStatus;
+  photoLibrary: PermissionStatus;
+  contacts: PermissionStatus;
+  location: PermissionStatus;
+  notifications: PermissionStatus;
+}
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -36,6 +52,16 @@ export default function OnboardingScreen() {
   const [knowledge, setKnowledge] = useState<string[]>([]);
   const [serviceInput, setServiceInput] = useState("");
   const [knowledgeInput, setKnowledgeInput] = useState("");
+
+  // Step 5: Permissions
+  const [permissions, setPermissions] = useState<PermissionState>({
+    camera: 'undetermined',
+    microphone: 'undetermined',
+    photoLibrary: 'undetermined',
+    contacts: 'undetermined',
+    location: 'undetermined',
+    notifications: 'undetermined',
+  });
 
   // Validation
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
@@ -106,6 +132,10 @@ export default function OnboardingScreen() {
     } else if (step === 3) {
       console.log("User completed Step 3 - moving to Step 4");
       setStep(4);
+    } else if (step === 4) {
+      console.log("User completed Step 4 - moving to Step 5 (Permissions)");
+      setStep(5);
+      checkAllPermissions();
     }
   };
 
@@ -166,6 +196,146 @@ export default function OnboardingScreen() {
     setKnowledge(updatedKnowledge);
   };
 
+  const checkAllPermissions = async () => {
+    console.log('Onboarding: Checking all permissions');
+    try {
+      const cameraStatus = await Camera.getCameraPermissionsAsync();
+      const microphoneStatus = await Camera.getMicrophonePermissionsAsync();
+      const mediaLibraryStatus = await MediaLibrary.getPermissionsAsync();
+      const contactsStatus = await Contacts.getPermissionsAsync();
+      const locationStatus = await Location.getForegroundPermissionsAsync();
+      const notificationsStatus = await Notifications.getPermissionsAsync();
+
+      setPermissions({
+        camera: cameraStatus.status,
+        microphone: microphoneStatus.status,
+        photoLibrary: mediaLibraryStatus.status,
+        contacts: contactsStatus.status,
+        location: locationStatus.status,
+        notifications: notificationsStatus.status,
+      });
+
+      console.log('Onboarding: Current permissions:', {
+        camera: cameraStatus.status,
+        microphone: microphoneStatus.status,
+        photoLibrary: mediaLibraryStatus.status,
+        contacts: contactsStatus.status,
+        location: locationStatus.status,
+        notifications: notificationsStatus.status,
+      });
+    } catch (error) {
+      console.error('Onboarding: Error checking permissions:', error);
+    }
+  };
+
+  const requestCameraPermission = async () => {
+    console.log('Onboarding: User tapped Camera permission');
+    try {
+      const result = await Camera.requestCameraPermissionsAsync();
+      console.log('Onboarding: Camera permission result:', result.status);
+      setPermissions(prev => ({ ...prev, camera: result.status }));
+    } catch (error) {
+      console.error('Onboarding: Error requesting camera permission:', error);
+    }
+  };
+
+  const requestMicrophonePermission = async () => {
+    console.log('Onboarding: User tapped Microphone permission');
+    try {
+      const result = await Camera.requestMicrophonePermissionsAsync();
+      console.log('Onboarding: Microphone permission result:', result.status);
+      setPermissions(prev => ({ ...prev, microphone: result.status }));
+    } catch (error) {
+      console.error('Onboarding: Error requesting microphone permission:', error);
+    }
+  };
+
+  const requestPhotoLibraryPermission = async () => {
+    console.log('Onboarding: User tapped Photo Library permission');
+    try {
+      const result = await MediaLibrary.requestPermissionsAsync();
+      console.log('Onboarding: Photo Library permission result:', result.status);
+      setPermissions(prev => ({ ...prev, photoLibrary: result.status }));
+    } catch (error) {
+      console.error('Onboarding: Error requesting photo library permission:', error);
+    }
+  };
+
+  const requestContactsPermission = async () => {
+    console.log('Onboarding: User tapped Contacts permission');
+    try {
+      const result = await Contacts.requestPermissionsAsync();
+      console.log('Onboarding: Contacts permission result:', result.status);
+      setPermissions(prev => ({ ...prev, contacts: result.status }));
+    } catch (error) {
+      console.error('Onboarding: Error requesting contacts permission:', error);
+    }
+  };
+
+  const requestLocationPermission = async () => {
+    console.log('Onboarding: User tapped Location permission');
+    try {
+      const result = await Location.requestForegroundPermissionsAsync();
+      console.log('Onboarding: Location permission result:', result.status);
+      setPermissions(prev => ({ ...prev, location: result.status }));
+    } catch (error) {
+      console.error('Onboarding: Error requesting location permission:', error);
+    }
+  };
+
+  const requestNotificationsPermission = async () => {
+    console.log('Onboarding: User tapped Notifications permission');
+    try {
+      const result = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
+      console.log('Onboarding: Notifications permission result:', result.status);
+      setPermissions(prev => ({ ...prev, notifications: result.status }));
+    } catch (error) {
+      console.error('Onboarding: Error requesting notifications permission:', error);
+    }
+  };
+
+  const requestAllPermissions = async () => {
+    console.log('Onboarding: User tapped Request All Permissions');
+    await requestCameraPermission();
+    await requestMicrophonePermission();
+    await requestPhotoLibraryPermission();
+    await requestContactsPermission();
+    await requestLocationPermission();
+    await requestNotificationsPermission();
+  };
+
+  const getStatusColor = (status: PermissionStatus) => {
+    switch (status) {
+      case 'granted':
+        return colors.primary;
+      case 'denied':
+        return '#FF3B30';
+      case 'undetermined':
+        return colors.textSecondary;
+      default:
+        return colors.textSecondary;
+    }
+  };
+
+  const getStatusIcon = (status: PermissionStatus) => {
+    switch (status) {
+      case 'granted':
+        return 'check-circle';
+      case 'denied':
+        return 'cancel';
+      case 'undetermined':
+        return 'help';
+      default:
+        return 'help';
+    }
+  };
+
   const handleComplete = async () => {
     if (!username || !fullName) {
       Alert.alert("Error", "Username and full name are required");
@@ -216,8 +386,9 @@ export default function OnboardingScreen() {
   };
 
   const handleSkipStep4 = async () => {
-    console.log("User skipped Step 4 (Services & Knowledge)");
-    await handleComplete();
+    console.log("User skipped Step 4 (Services & Knowledge) - moving to Step 5 (Permissions)");
+    setStep(5);
+    checkAllPermissions();
   };
 
   const renderStep1 = () => {
@@ -519,23 +690,197 @@ export default function OnboardingScreen() {
 
         <View style={styles.buttonColumn}>
           <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.buttonDisabled]}
+            style={styles.primaryButton}
+            onPress={handleNext}
+          >
+            <Text style={styles.primaryButtonText}>Next</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkipStep4}
+          >
+            <Text style={styles.skipButtonText}>Skip for now</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.secondaryButton, styles.backButtonFullWidth]}
+            onPress={handleBack}
+          >
+            <Text style={styles.secondaryButtonText}>Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderStep5 = () => {
+    const cameraLabel = 'Camera';
+    const cameraDesc = 'Take photos and videos';
+    const microphoneLabel = 'Microphone';
+    const microphoneDesc = 'Record audio and voice messages';
+    const photoLibraryLabel = 'Photo Library';
+    const photoLibraryDesc = 'Access and upload photos';
+    const contactsLabel = 'Contacts';
+    const contactsDesc = 'Find friends from your contacts';
+    const locationLabel = 'Location';
+    const locationDesc = 'Share your location with friends';
+    const notificationsLabel = 'Notifications';
+    const notificationsDesc = 'Receive push notifications';
+
+    return (
+      <View style={styles.stepContainer}>
+        <Text style={styles.stepTitle}>App Permissions</Text>
+        <Text style={styles.stepDescription}>
+          Grant permissions to unlock all features
+        </Text>
+
+        <ScrollView style={styles.permissionsScroll} showsVerticalScrollIndicator={false}>
+          <TouchableOpacity style={styles.permissionItem} onPress={requestCameraPermission}>
+            <View style={styles.permissionLeft}>
+              <IconSymbol 
+                ios_icon_name="camera.fill" 
+                android_material_icon_name="camera" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <View style={styles.permissionContent}>
+                <Text style={styles.permissionLabel}>{cameraLabel}</Text>
+                <Text style={styles.permissionDescription}>{cameraDesc}</Text>
+              </View>
+            </View>
+            <IconSymbol 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name={getStatusIcon(permissions.camera)} 
+              size={20} 
+              color={getStatusColor(permissions.camera)} 
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.permissionItem} onPress={requestMicrophonePermission}>
+            <View style={styles.permissionLeft}>
+              <IconSymbol 
+                ios_icon_name="mic.fill" 
+                android_material_icon_name="mic" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <View style={styles.permissionContent}>
+                <Text style={styles.permissionLabel}>{microphoneLabel}</Text>
+                <Text style={styles.permissionDescription}>{microphoneDesc}</Text>
+              </View>
+            </View>
+            <IconSymbol 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name={getStatusIcon(permissions.microphone)} 
+              size={20} 
+              color={getStatusColor(permissions.microphone)} 
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.permissionItem} onPress={requestPhotoLibraryPermission}>
+            <View style={styles.permissionLeft}>
+              <IconSymbol 
+                ios_icon_name="photo.fill" 
+                android_material_icon_name="photo" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <View style={styles.permissionContent}>
+                <Text style={styles.permissionLabel}>{photoLibraryLabel}</Text>
+                <Text style={styles.permissionDescription}>{photoLibraryDesc}</Text>
+              </View>
+            </View>
+            <IconSymbol 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name={getStatusIcon(permissions.photoLibrary)} 
+              size={20} 
+              color={getStatusColor(permissions.photoLibrary)} 
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.permissionItem} onPress={requestContactsPermission}>
+            <View style={styles.permissionLeft}>
+              <IconSymbol 
+                ios_icon_name="person.2.fill" 
+                android_material_icon_name="contacts" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <View style={styles.permissionContent}>
+                <Text style={styles.permissionLabel}>{contactsLabel}</Text>
+                <Text style={styles.permissionDescription}>{contactsDesc}</Text>
+              </View>
+            </View>
+            <IconSymbol 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name={getStatusIcon(permissions.contacts)} 
+              size={20} 
+              color={getStatusColor(permissions.contacts)} 
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.permissionItem} onPress={requestLocationPermission}>
+            <View style={styles.permissionLeft}>
+              <IconSymbol 
+                ios_icon_name="location.fill" 
+                android_material_icon_name="location-on" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <View style={styles.permissionContent}>
+                <Text style={styles.permissionLabel}>{locationLabel}</Text>
+                <Text style={styles.permissionDescription}>{locationDesc}</Text>
+              </View>
+            </View>
+            <IconSymbol 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name={getStatusIcon(permissions.location)} 
+              size={20} 
+              color={getStatusColor(permissions.location)} 
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.permissionItem} onPress={requestNotificationsPermission}>
+            <View style={styles.permissionLeft}>
+              <IconSymbol 
+                ios_icon_name="bell.fill" 
+                android_material_icon_name="notifications" 
+                size={24} 
+                color={colors.primary} 
+              />
+              <View style={styles.permissionContent}>
+                <Text style={styles.permissionLabel}>{notificationsLabel}</Text>
+                <Text style={styles.permissionDescription}>{notificationsDesc}</Text>
+              </View>
+            </View>
+            <IconSymbol 
+              ios_icon_name="checkmark.circle.fill" 
+              android_material_icon_name={getStatusIcon(permissions.notifications)} 
+              size={20} 
+              color={getStatusColor(permissions.notifications)} 
+            />
+          </TouchableOpacity>
+        </ScrollView>
+
+        <View style={styles.buttonColumn}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={requestAllPermissions}
+          >
+            <Text style={styles.primaryButtonText}>Grant All Permissions</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.primaryButton, styles.completeButton, loading && styles.buttonDisabled]}
             onPress={handleComplete}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.primaryButtonText}>Complete</Text>
+              <Text style={styles.primaryButtonText}>Complete Setup</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.skipButton, loading && styles.buttonDisabled]}
-            onPress={handleSkipStep4}
-            disabled={loading}
-          >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -550,8 +895,8 @@ export default function OnboardingScreen() {
     );
   };
 
-  const progressPercentage = (step / 4) * 100;
-  const stepText = `Step ${step} of 4`;
+  const progressPercentage = (step / 5) * 100;
+  const stepText = `Step ${step} of 5`;
 
   return (
     <>
@@ -592,6 +937,7 @@ export default function OnboardingScreen() {
           {step === 2 && renderStep2()}
           {step === 3 && renderStep3()}
           {step === 4 && renderStep4()}
+          {step === 5 && renderStep5()}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
@@ -774,6 +1120,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  permissionsScroll: {
+    maxHeight: 400,
+    marginBottom: 16,
+  },
+  permissionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.backgroundAlt,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  permissionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  permissionContent: {
+    flex: 1,
+  },
+  permissionLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 4,
+  },
+  permissionDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
   primaryButton: {
     height: 50,
     backgroundColor: colors.primary,
@@ -822,6 +1202,10 @@ const styles = StyleSheet.create({
   backButtonFullWidth: {
     marginRight: 0,
     marginTop: 12,
+  },
+  completeButton: {
+    marginTop: 12,
+    backgroundColor: '#34C759',
   },
   buttonDisabled: {
     opacity: 0.5,
