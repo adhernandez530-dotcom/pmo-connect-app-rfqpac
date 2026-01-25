@@ -62,15 +62,7 @@ export default function UserProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
 
-  useEffect(() => {
-    console.log("UserProfileScreen: Loading profile for user ID:", id);
-    loadUserProfile();
-    loadUserServices();
-    loadUserKnowledge();
-    checkFriendshipStatus();
-  }, [id]);
-
-  const loadUserProfile = async () => {
+  const loadUserProfile = React.useCallback(async () => {
     console.log("UserProfileScreen: Fetching user profile");
     try {
       const response = await fetch(`${BACKEND_URL}/api/users/${id}`);
@@ -83,9 +75,9 @@ export default function UserProfileScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
 
-  const loadUserServices = async () => {
+  const loadUserServices = React.useCallback(async () => {
     console.log("UserProfileScreen: Fetching user services");
     try {
       const response = await fetch(`${BACKEND_URL}/api/users/${id}/services`);
@@ -97,9 +89,9 @@ export default function UserProfileScreen() {
     } catch (error) {
       console.error("UserProfileScreen: Error loading services:", error);
     }
-  };
+  }, [id]);
 
-  const loadUserKnowledge = async () => {
+  const loadUserKnowledge = React.useCallback(async () => {
     console.log("UserProfileScreen: Fetching user knowledge");
     try {
       const response = await fetch(`${BACKEND_URL}/api/users/${id}/knowledge`);
@@ -111,9 +103,9 @@ export default function UserProfileScreen() {
     } catch (error) {
       console.error("UserProfileScreen: Error loading knowledge:", error);
     }
-  };
+  }, [id]);
 
-  const checkFriendshipStatus = async () => {
+  const checkFriendshipStatus = React.useCallback(async () => {
     console.log("UserProfileScreen: Checking friendship status");
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/friends/status/${id}`);
@@ -125,7 +117,15 @@ export default function UserProfileScreen() {
     } catch (error) {
       console.error("UserProfileScreen: Error checking friendship status:", error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    console.log("UserProfileScreen: Loading profile for user ID:", id);
+    loadUserProfile();
+    loadUserServices();
+    loadUserKnowledge();
+    checkFriendshipStatus();
+  }, [id, loadUserProfile, loadUserServices, loadUserKnowledge, checkFriendshipStatus]);
 
   const handleSendFriendRequest = async () => {
     console.log("UserProfileScreen: User tapped Send Friend Request button");

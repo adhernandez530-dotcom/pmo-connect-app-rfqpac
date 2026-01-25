@@ -65,14 +65,7 @@ export default function ChatScreen() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    console.log("ChatScreen: Loading chat with user ID:", id);
-    loadOtherUserProfile();
-    loadCurrentUser();
-    loadMessages();
-  }, [id]);
-
-  const loadCurrentUser = async () => {
+  const loadCurrentUser = React.useCallback(async () => {
     console.log("ChatScreen: Fetching current user");
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/users/me`);
@@ -84,9 +77,9 @@ export default function ChatScreen() {
     } catch (error) {
       console.error("ChatScreen: Error loading current user:", error);
     }
-  };
+  }, []);
 
-  const loadOtherUserProfile = async () => {
+  const loadOtherUserProfile = React.useCallback(async () => {
     console.log("ChatScreen: Fetching other user profile");
     try {
       const response = await fetch(`${BACKEND_URL}/api/users/${id}`);
@@ -99,9 +92,9 @@ export default function ChatScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
 
-  const loadMessages = async () => {
+  const loadMessages = React.useCallback(async () => {
     console.log("ChatScreen: Fetching messages");
     try {
       const response = await authenticatedFetch(`${BACKEND_URL}/api/messages/${id}`);
@@ -116,7 +109,14 @@ export default function ChatScreen() {
     } catch (error) {
       console.error("ChatScreen: Error loading messages:", error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    console.log("ChatScreen: Loading chat with user ID:", id);
+    loadOtherUserProfile();
+    loadCurrentUser();
+    loadMessages();
+  }, [id, loadOtherUserProfile, loadCurrentUser, loadMessages]);
 
   const loadFriends = async () => {
     console.log("ChatScreen: Fetching friends list");

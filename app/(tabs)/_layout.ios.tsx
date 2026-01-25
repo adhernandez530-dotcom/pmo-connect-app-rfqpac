@@ -1,40 +1,8 @@
 
 import React from 'react';
-import { NativeTabs, Icon, Label, Badge } from 'expo-router/unstable-native-tabs';
-import { colors } from '@/styles/commonStyles';
-import { authenticatedFetch } from '@/utils/api';
-import Constants from 'expo-constants';
-
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
+import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 
 export default function TabLayout() {
-  const [unreadCount, setUnreadCount] = React.useState(0);
-
-  React.useEffect(() => {
-    console.log('iOS TabLayout: Loading unread notification count');
-    loadUnreadCount();
-    
-    // Poll for updates every 30 seconds
-    const interval = setInterval(() => {
-      loadUnreadCount();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadUnreadCount = async () => {
-    try {
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/notifications/unread-count`);
-      const data = await response.json();
-      console.log('iOS TabLayout: Unread notification count:', data.count);
-      setUnreadCount(data.count || 0);
-    } catch (error) {
-      console.error('iOS TabLayout: Error loading unread count:', error);
-    }
-  };
-
-  const badgeText = unreadCount > 99 ? '99+' : unreadCount.toString();
-
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="(home)">
@@ -43,16 +11,19 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="feed">
         <Label>Feed</Label>
-        <Icon sf={{ default: 'list.bullet', selected: 'list.bullet' }} drawable="rss-feed" />
+        <Icon sf={{ default: 'newspaper', selected: 'newspaper.fill' }} drawable="article" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="friends">
+        <Label>Friends</Label>
+        <Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} drawable="group" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="messages">
         <Label>Messages</Label>
         <Icon sf={{ default: 'message', selected: 'message.fill' }} drawable="message" />
-        {unreadCount > 0 && <Badge>{badgeText}</Badge>}
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="search">
-        <Label>Search</Label>
-        <Icon sf={{ default: 'magnifyingglass', selected: 'magnifyingglass' }} drawable="search" />
+      <NativeTabs.Trigger name="profile">
+        <Label>Profile</Label>
+        <Icon sf={{ default: 'person.circle', selected: 'person.circle.fill' }} drawable="person" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

@@ -80,9 +80,9 @@ function RootLayoutNav() {
       console.log("RootLayout: Verifying onboarding status");
       checkOnboardingAndRedirect();
     }
-  }, [user, loading, segments, onboardingChecked]);
+  }, [user, loading, segments, onboardingChecked, router]);
 
-  const checkOnboardingAndRedirect = async () => {
+  const checkOnboardingAndRedirect = React.useCallback(async () => {
     if (!user) {
       console.log("RootLayout: No user, skipping onboarding check");
       return;
@@ -113,7 +113,7 @@ function RootLayoutNav() {
       setOnboardingChecked(true);
       router.replace("/onboarding");
     }
-  };
+  }, [user, router]);
 
   React.useEffect(() => {
     if (

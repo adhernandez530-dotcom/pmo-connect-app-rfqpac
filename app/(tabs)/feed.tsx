@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Dimensions } from "react-native";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import Constants from "expo-constants";
 import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
   if (!source) return { uri: '' };
@@ -150,7 +151,11 @@ export default function FeedScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
         {posts.length === 0 && !loading && (
           <View style={styles.emptyState}>
             <IconSymbol
@@ -195,14 +200,14 @@ export default function FeedScreen() {
                     </View>
                   )}
                   <View style={styles.userDetails}>
-                    <Text style={styles.fullName}>{post.fullName}</Text>
-                    <Text style={styles.username}>@{post.username}</Text>
+                    <Text style={styles.fullName} numberOfLines={1}>{post.fullName}</Text>
+                    <Text style={styles.username} numberOfLines={1}>@{post.username}</Text>
                   </View>
                 </View>
               </View>
 
               {post.mediaUrl && (
-                <Image source={resolveImageSource(post.mediaUrl)} style={styles.postMedia} />
+                <Image source={resolveImageSource(post.mediaUrl)} style={styles.postMedia} resizeMode="cover" />
               )}
 
               {post.content && (
@@ -294,6 +299,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollViewContent: {
+    paddingBottom: 100,
+  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -320,6 +328,7 @@ const styles = StyleSheet.create({
     marginVertical: 6,
     borderRadius: 12,
     padding: 12,
+    maxWidth: SCREEN_WIDTH - 24,
   },
   repostBanner: {
     flexDirection: 'row',
@@ -341,6 +350,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
   avatar: {
     width: 36,
@@ -374,7 +384,7 @@ const styles = StyleSheet.create({
   },
   postMedia: {
     width: '100%',
-    height: 240,
+    height: 200,
     borderRadius: 8,
     marginBottom: 10,
   },

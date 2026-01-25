@@ -1,21 +1,16 @@
 
-import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Modal } from "react-native";
-import { colors } from "@/styles/commonStyles";
-import { IconSymbol } from "@/components/IconSymbol";
-import { useRouter } from "expo-router";
-import Constants from "expo-constants";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Modal, Dimensions } from "react-native";
+import { authenticatedFetch } from "@/utils/api";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { authenticatedFetch } from "@/utils/api";
+import Constants from "expo-constants";
+import { useRouter } from "expo-router";
+import { colors } from "@/styles/commonStyles";
+import React, { useState, useEffect, useCallback } from "react";
+import { IconSymbol } from "@/components/IconSymbol";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
-
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
-  if (typeof source === 'string') return { uri: source };
-  return source as ImageSourcePropType;
-}
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Conversation {
   userId: string;
@@ -30,255 +25,6 @@ interface Conversation {
   muted: boolean;
 }
 
-export default function MessagesScreen() {
-  const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [showArchived, setShowArchived] = useState(false);
-  const [previewModal, setPreviewModal] = useState<{ visible: boolean; conversation: Conversation | null }>({
-    visible: false,
-    conversation: null,
-  });
-
-  const loadConversations = useCallback(async () => {
-    try {
-      console.log('MessagesScreen: Fetching conversations from backend');
-      const endpoint = showArchived
-        ? `${BACKEND_URL}/api/messages/archived`
-        : `${BACKEND_URL}/api/messages/conversations`;
-      const response = await authenticatedFetch(endpoint);
-      if (!response.ok) {
-        console.log('MessagesScreen: API returned error status:', response.status);
-        setConversations([]);
-        return;
-      }
-      const data = await response.json();
-      console.log('MessagesScreen: Conversations loaded successfully', data);
-      
-      // Validate that data is an array before setting state
-      if (Array.isArray(data)) {
-        setConversations(data);
-      } else {
-        console.log('MessagesScreen: API returned non-array data:', data);
-        setConversations([]);
-      }
-    } catch (error) {
-      console.error('MessagesScreen: Error loading conversations:', error);
-      setConversations([]);
-    }
-  }, [showArchived]);
-
-  useEffect(() => {
-    console.log('MessagesScreen: Loading conversations');
-    loadConversations();
-  }, [showArchived, loadConversations]);
-
-  const handleMarkRead = async (userId: string) => {
-    console.log('MessagesScreen: Marking conversation as read:', userId);
-    try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/read`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      loadConversations();
-    } catch (error) {
-      console.error('MessagesScreen: Error marking as read:', error);
-    }
-  };
-
-  const handleMarkUnread = async (userId: string) => {
-    console.log('MessagesScreen: Marking conversation as unread:', userId);
-    try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/unread`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      loadConversations();
-    } catch (error) {
-      console.error('MessagesScreen: Error marking as unread:', error);
-    }
-  };
-
-  const handleMute = async (userId: string) => {
-    console.log('MessagesScreen: Muting conversation:', userId);
-    try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/mute`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      loadConversations();
-    } catch (error) {
-      console.error('MessagesScreen: Error muting conversation:', error);
-    }
-  };
-
-  const handleDelete = async (userId: string) => {
-    console.log('MessagesScreen: Deleting conversation:', userId);
-    try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}`, { method: 'DELETE' });
-      loadConversations();
-    } catch (error) {
-      console.error('MessagesScreen: Error deleting conversation:', error);
-    }
-  };
-
-  const handleArchive = async (userId: string) => {
-    console.log('MessagesScreen: Archiving conversation:', userId);
-    try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/${userId}/archive`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      loadConversations();
-    } catch (error) {
-      console.error('MessagesScreen: Error archiving conversation:', error);
-    }
-  };
-
-  const handleLongPress = (conversation: Conversation) => {
-    console.log('MessagesScreen: User long-pressed conversation:', conversation.userId);
-    setPreviewModal({ visible: true, conversation });
-  };
-
-  const handleConversationPress = (userId: string) => {
-    console.log('MessagesScreen: User tapped conversation:', userId);
-    router.push(`/chat/${userId}`);
-  };
-
-  const getInitials = (name: string) => {
-    const nameParts = name.split(' ');
-    const firstInitial = nameParts[0]?.[0] || '';
-    const lastInitial = nameParts[1]?.[0] || '';
-    return firstInitial + lastInitial;
-  };
-
-  const archiveButtonText = showArchived ? 'Back to Messages' : 'Archived';
-  const mutualFriendsText = 'mutual friends';
-  const noConversationsText = 'No conversations yet';
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity onPress={() => setShowArchived(!showArchived)}>
-          <IconSymbol
-            ios_icon_name="archivebox"
-            android_material_icon_name="archive"
-            size={22}
-            color={colors.primary}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {conversations.length === 0 ? (
-          <View style={styles.emptyState}>
-            <IconSymbol
-              ios_icon_name="message.slash"
-              android_material_icon_name="message"
-              size={40}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.emptyStateText}>{noConversationsText}</Text>
-          </View>
-        ) : (
-          <React.Fragment>
-            {conversations.map((conversation, index) => {
-              const initials = getInitials(conversation.fullName);
-              const mutualFriendsDisplay = conversation.mutualFriends
-                ? `${conversation.mutualFriends} ${mutualFriendsText}`
-                : '';
-
-              return (
-                <SwipeableConversation
-                  key={index}
-                  conversation={conversation}
-                  onPress={() => handleConversationPress(conversation.userId)}
-                  onLongPress={() => handleLongPress(conversation)}
-                  onMarkRead={() => handleMarkRead(conversation.userId)}
-                  onMarkUnread={() => handleMarkUnread(conversation.userId)}
-                  onMute={() => handleMute(conversation.userId)}
-                  onDelete={() => handleDelete(conversation.userId)}
-                  onArchive={() => handleArchive(conversation.userId)}
-                >
-                  <View style={styles.conversationCard}>
-                    <View style={styles.conversationContent}>
-                      {conversation.avatarUrl ? (
-                        <Image source={resolveImageSource(conversation.avatarUrl)} style={styles.avatar} />
-                      ) : (
-                        <View style={styles.avatarPlaceholder}>
-                          <Text style={styles.avatarText}>{initials}</Text>
-                        </View>
-                      )}
-                      <View style={styles.conversationDetails}>
-                        <View style={styles.conversationHeader}>
-                          <Text style={styles.fullName}>{conversation.fullName}</Text>
-                          {conversation.unread && <View style={styles.unreadDot} />}
-                          {conversation.muted && (
-                            <IconSymbol
-                              ios_icon_name="bell.slash.fill"
-                              android_material_icon_name="notifications-off"
-                              size={12}
-                              color={colors.textSecondary}
-                            />
-                          )}
-                        </View>
-                        <Text style={styles.lastMessage} numberOfLines={1}>
-                          {conversation.lastMessage}
-                        </Text>
-                        {mutualFriendsDisplay && (
-                          <Text style={styles.mutualFriends}>{mutualFriendsDisplay}</Text>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                </SwipeableConversation>
-              );
-            })}
-          </React.Fragment>
-        )}
-      </ScrollView>
-
-      <Modal
-        visible={previewModal.visible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPreviewModal({ visible: false, conversation: null })}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setPreviewModal({ visible: false, conversation: null })}
-        >
-          {previewModal.conversation && (
-            <View style={styles.previewCard}>
-              <View style={styles.previewHeader}>
-                {previewModal.conversation.avatarUrl ? (
-                  <Image
-                    source={resolveImageSource(previewModal.conversation.avatarUrl)}
-                    style={styles.previewAvatar}
-                  />
-                ) : (
-                  <View style={styles.previewAvatarPlaceholder}>
-                    <Text style={styles.previewAvatarText}>
-                      {getInitials(previewModal.conversation.fullName)}
-                    </Text>
-                  </View>
-                )}
-                <Text style={styles.previewName}>{previewModal.conversation.fullName}</Text>
-              </View>
-              <Text style={styles.previewMessage}>{previewModal.conversation.lastMessage}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </Modal>
-    </View>
-  );
-}
-
 interface SwipeableConversationProps {
   conversation: Conversation;
   onPress: () => void;
@@ -291,55 +37,348 @@ interface SwipeableConversationProps {
   children: React.ReactNode;
 }
 
-function SwipeableConversation({
-  conversation,
-  onPress,
-  onLongPress,
-  onMarkRead,
-  onMarkUnread,
-  onMute,
-  onDelete,
-  onArchive,
-  children,
-}: SwipeableConversationProps) {
-  const translateX = useSharedValue(0);
-  const [showLeftActions, setShowLeftActions] = useState(false);
-  const [showRightActions, setShowRightActions] = useState(false);
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
+  if (!source) return { uri: '' };
+  if (typeof source === 'string') return { uri: source };
+  return source as ImageSourcePropType;
+}
 
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      translateX.value = e.translationX;
-      setShowLeftActions(e.translationX > 80);
-      setShowRightActions(e.translationX < -80);
-    })
-    .onEnd(() => {
-      if (translateX.value > 80) {
-        if (conversation.unread) {
-          onMarkRead();
-        } else {
-          onMarkUnread();
-        }
-      } else if (translateX.value < -80) {
-        onMute();
-      }
-      translateX.value = withTiming(0);
-      setShowLeftActions(false);
-      setShowRightActions(false);
-    });
+export default function MessagesScreen() {
+  const router = useRouter();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [showActionModal, setShowActionModal] = useState(false);
+
+  const loadConversations = useCallback(async () => {
+    try {
+      console.log('MessagesScreen: Fetching conversations');
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations${showArchived ? '?archived=true' : ''}`);
+      const data = await response.json();
+      console.log('MessagesScreen: Conversations loaded:', data);
+      setConversations(data);
+    } catch (error) {
+      console.error('MessagesScreen: Error loading conversations:', error);
+    }
+  }, [showArchived]);
+
+  useEffect(() => {
+    console.log('MessagesScreen: Loading conversations, showArchived:', showArchived);
+    loadConversations();
+  }, [showArchived, loadConversations]);
+
+  const handleMarkRead = useCallback(async (userId: string) => {
+    console.log('MessagesScreen: Marking conversation as read:', userId);
+    try {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      loadConversations();
+    } catch (error) {
+      console.error('MessagesScreen: Error marking as read:', error);
+    }
+  }, [loadConversations]);
+
+  const handleMarkUnread = useCallback(async (userId: string) => {
+    console.log('MessagesScreen: Marking conversation as unread:', userId);
+    try {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/unread`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      loadConversations();
+    } catch (error) {
+      console.error('MessagesScreen: Error marking as unread:', error);
+    }
+  }, [loadConversations]);
+
+  const handleMute = useCallback(async (userId: string) => {
+    console.log('MessagesScreen: Toggling mute for conversation:', userId);
+    try {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/mute`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      loadConversations();
+    } catch (error) {
+      console.error('MessagesScreen: Error toggling mute:', error);
+    }
+  }, [loadConversations]);
+
+  const handleDelete = useCallback(async (userId: string) => {
+    console.log('MessagesScreen: Deleting conversation:', userId);
+    try {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}`, {
+        method: 'DELETE'
+      });
+      loadConversations();
+    } catch (error) {
+      console.error('MessagesScreen: Error deleting conversation:', error);
+    }
+  }, [loadConversations]);
+
+  const handleArchive = useCallback(async (userId: string) => {
+    console.log('MessagesScreen: Archiving conversation:', userId);
+    try {
+      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/archive`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      loadConversations();
+    } catch (error) {
+      console.error('MessagesScreen: Error archiving conversation:', error);
+    }
+  }, [loadConversations]);
+
+  const handleLongPress = (conversation: Conversation) => {
+    console.log('MessagesScreen: Long press on conversation:', conversation.userId);
+    setSelectedConversation(conversation);
+    setShowActionModal(true);
+  };
+
+  const handleConversationPress = (userId: string) => {
+    console.log('MessagesScreen: User tapped conversation:', userId);
+    router.push(`/chat/${userId}`);
+  };
+
+  const getInitials = (name: string) => {
+    const nameParts = name.split(' ');
+    const firstInitial = nameParts[0]?.[0] || '';
+    const lastInitial = nameParts[1]?.[0] || '';
+    return (firstInitial + lastInitial).toUpperCase();
+  };
+
+  const archivedText = showArchived ? 'Show Active' : 'Show Archived';
+  const noConversationsText = showArchived ? 'No archived conversations' : 'No messages yet';
+  const noConversationsSubtext = showArchived ? 'Archived conversations will appear here' : 'Start a conversation with your friends';
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Messages</Text>
+        <TouchableOpacity onPress={() => setShowArchived(!showArchived)}>
+          <Text style={styles.archivedButton}>{archivedText}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {conversations.length === 0 && (
+          <View style={styles.emptyState}>
+            <IconSymbol
+              ios_icon_name="message"
+              android_material_icon_name="message"
+              size={48}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.emptyStateTitle}>{noConversationsText}</Text>
+            <Text style={styles.emptyStateSubtext}>{noConversationsSubtext}</Text>
+          </View>
+        )}
+
+        {conversations.map((conversation, index) => {
+          const initials = getInitials(conversation.fullName);
+          
+          return (
+            <SwipeableConversation
+              key={index}
+              conversation={conversation}
+              onPress={() => handleConversationPress(conversation.userId)}
+              onLongPress={() => handleLongPress(conversation)}
+              onMarkRead={() => handleMarkRead(conversation.userId)}
+              onMarkUnread={() => handleMarkUnread(conversation.userId)}
+              onMute={() => handleMute(conversation.userId)}
+              onDelete={() => handleDelete(conversation.userId)}
+              onArchive={() => handleArchive(conversation.userId)}
+            >
+              <View style={styles.conversationCard}>
+                <View style={styles.conversationContent}>
+                  {conversation.avatarUrl ? (
+                    <Image source={resolveImageSource(conversation.avatarUrl)} style={styles.avatar} />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Text style={styles.avatarText}>{initials}</Text>
+                    </View>
+                  )}
+                  <View style={styles.conversationInfo}>
+                    <View style={styles.conversationHeader}>
+                      <Text style={styles.fullName} numberOfLines={1}>{conversation.fullName}</Text>
+                      <Text style={styles.time}>{conversation.lastMessageTime}</Text>
+                    </View>
+                    <View style={styles.messagePreview}>
+                      <Text 
+                        style={[styles.lastMessage, conversation.unread && styles.unreadMessage]} 
+                        numberOfLines={1}
+                      >
+                        {conversation.lastMessage}
+                      </Text>
+                      {conversation.unread && <View style={styles.unreadDot} />}
+                      {conversation.muted && (
+                        <IconSymbol
+                          ios_icon_name="bell.slash.fill"
+                          android_material_icon_name="notifications-off"
+                          size={14}
+                          color={colors.textSecondary}
+                        />
+                      )}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </SwipeableConversation>
+          );
+        })}
+      </ScrollView>
+
+      <Modal
+        visible={showActionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActionModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowActionModal(false)}
+        >
+          <View style={styles.actionSheet}>
+            {selectedConversation && (
+              <>
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => {
+                    if (selectedConversation.unread) {
+                      handleMarkRead(selectedConversation.userId);
+                    } else {
+                      handleMarkUnread(selectedConversation.userId);
+                    }
+                    setShowActionModal(false);
+                  }}
+                >
+                  <IconSymbol
+                    ios_icon_name={selectedConversation.unread ? "envelope.open" : "envelope"}
+                    android_material_icon_name={selectedConversation.unread ? "mark-email-read" : "mark-email-unread"}
+                    size={20}
+                    color={colors.text}
+                  />
+                  <Text style={styles.actionText}>
+                    {selectedConversation.unread ? 'Mark as Read' : 'Mark as Unread'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => {
+                    handleMute(selectedConversation.userId);
+                    setShowActionModal(false);
+                  }}
+                >
+                  <IconSymbol
+                    ios_icon_name={selectedConversation.muted ? "bell" : "bell.slash"}
+                    android_material_icon_name={selectedConversation.muted ? "notifications" : "notifications-off"}
+                    size={20}
+                    color={colors.text}
+                  />
+                  <Text style={styles.actionText}>
+                    {selectedConversation.muted ? 'Unmute' : 'Mute'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => {
+                    handleArchive(selectedConversation.userId);
+                    setShowActionModal(false);
+                  }}
+                >
+                  <IconSymbol
+                    ios_icon_name="archivebox"
+                    android_material_icon_name="archive"
+                    size={20}
+                    color={colors.text}
+                  />
+                  <Text style={styles.actionText}>Archive</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionItem, styles.deleteAction]}
+                  onPress={() => {
+                    handleDelete(selectedConversation.userId);
+                    setShowActionModal(false);
+                  }}
+                >
+                  <IconSymbol
+                    ios_icon_name="trash"
+                    android_material_icon_name="delete"
+                    size={20}
+                    color="#FF3B30"
+                  />
+                  <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
+function SwipeableConversation({ conversation, onPress, onLongPress, onMarkRead, onMarkUnread, onMute, onDelete, onArchive, children }: SwipeableConversationProps) {
+  const translateX = useSharedValue(0);
+  const [isRevealed, setIsRevealed] = useState(false);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
 
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      if (event.translationX < 0) {
+        translateX.value = Math.max(event.translationX, -150);
+      }
+    })
+    .onEnd(() => {
+      if (translateX.value < -75) {
+        translateX.value = withTiming(-150);
+        setIsRevealed(true);
+      } else {
+        translateX.value = withTiming(0);
+        setIsRevealed(false);
+      }
+    });
+
   return (
     <View style={styles.swipeableContainer}>
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity style={[styles.actionButton, styles.muteButton]} onPress={onMute}>
+          <IconSymbol
+            ios_icon_name="bell.slash"
+            android_material_icon_name="notifications-off"
+            size={20}
+            color="#FFF"
+          />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={onDelete}>
+          <IconSymbol
+            ios_icon_name="trash"
+            android_material_icon_name="delete"
+            size={20}
+            color="#FFF"
+          />
+        </TouchableOpacity>
+      </View>
       <GestureDetector gesture={panGesture}>
         <Animated.View style={animatedStyle}>
-          <TouchableOpacity
-            onPress={onPress}
-            onLongPress={onLongPress}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity onPress={onPress} onLongPress={onLongPress} activeOpacity={0.7}>
             {children}
           </TouchableOpacity>
         </Animated.View>
@@ -368,124 +407,160 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
   },
+  archivedButton: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '600',
+  },
   scrollView: {
     flex: 1,
   },
+  scrollViewContent: {
+    paddingBottom: 100,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 6,
+    textAlign: 'center',
+  },
   swipeableContainer: {
+    position: 'relative',
     marginHorizontal: 12,
     marginVertical: 4,
+  },
+  actionsContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    width: 75,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  muteButton: {
+    backgroundColor: '#FF9500',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
   },
   conversationCard: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
     padding: 12,
+    maxWidth: SCREEN_WIDTH - 24,
   },
   conversationContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
   avatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.primary,
   },
-  conversationDetails: {
+  conversationInfo: {
     flex: 1,
   },
   conversationHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
     marginBottom: 4,
   },
   fullName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.text,
+    flex: 1,
   },
-  unreadDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: colors.primary,
+  time: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  messagePreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   lastMessage: {
     fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 3,
+    flex: 1,
   },
-  mutualFriends: {
-    fontSize: 11,
-    color: colors.textSecondary,
+  unreadMessage: {
+    fontWeight: '600',
+    color: colors.text,
   },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 12,
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
-  previewCard: {
+  actionSheet: {
     backgroundColor: colors.backgroundAlt,
-    borderRadius: 16,
-    padding: 20,
-    width: '80%',
-    maxWidth: 360,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
-  previewHeader: {
+  actionItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
   },
-  previewAvatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    marginBottom: 10,
-  },
-  previewAvatarPlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  previewAvatarText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  previewName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  actionText: {
+    fontSize: 16,
     color: colors.text,
   },
-  previewMessage: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  deleteAction: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: 8,
+  },
+  deleteText: {
+    color: '#FF3B30',
   },
 });
