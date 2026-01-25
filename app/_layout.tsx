@@ -35,6 +35,39 @@ function RootLayoutNav() {
   const router = useRouter();
   const [onboardingChecked, setOnboardingChecked] = React.useState(false);
 
+  const checkOnboardingAndRedirect = React.useCallback(async () => {
+    if (!user) {
+      console.log("RootLayout: No user, skipping onboarding check");
+      return;
+    }
+
+    console.log("RootLayout: Checking onboarding status for user:", user.email);
+
+    try {
+      const Constants = await import("expo-constants");
+      const BACKEND_URL = Constants.default.expoConfig?.extra?.backendUrl || "http://localhost:3000";
+      const { authenticatedGet } = await import("@/utils/api");
+      
+      const profile = await authenticatedGet(`${BACKEND_URL}/api/users/me`);
+      console.log("RootLayout: Profile data - onboardingCompleted:", profile.onboardingCompleted);
+
+      setOnboardingChecked(true);
+
+      if (!profile.onboardingCompleted) {
+        console.log("RootLayout: Onboarding not completed, redirecting to /onboarding");
+        router.replace("/onboarding");
+      } else {
+        console.log("RootLayout: Onboarding completed, redirecting to home");
+        router.replace("/(tabs)/(home)");
+      }
+    } catch (error) {
+      console.error("RootLayout: Error checking onboarding status:", error);
+      // If we can't check, assume onboarding is needed
+      setOnboardingChecked(true);
+      router.replace("/onboarding");
+    }
+  }, [user, router]);
+
   // Main authentication and routing logic
   React.useEffect(() => {
     if (loading) {
@@ -80,40 +113,7 @@ function RootLayoutNav() {
       console.log("RootLayout: Verifying onboarding status");
       checkOnboardingAndRedirect();
     }
-  }, [user, loading, segments, onboardingChecked, router]);
-
-  const checkOnboardingAndRedirect = React.useCallback(async () => {
-    if (!user) {
-      console.log("RootLayout: No user, skipping onboarding check");
-      return;
-    }
-
-    console.log("RootLayout: Checking onboarding status for user:", user.email);
-
-    try {
-      const Constants = await import("expo-constants");
-      const BACKEND_URL = Constants.default.expoConfig?.extra?.backendUrl || "http://localhost:3000";
-      const { authenticatedGet } = await import("@/utils/api");
-      
-      const profile = await authenticatedGet(`${BACKEND_URL}/api/users/me`);
-      console.log("RootLayout: Profile data - onboardingCompleted:", profile.onboardingCompleted);
-
-      setOnboardingChecked(true);
-
-      if (!profile.onboardingCompleted) {
-        console.log("RootLayout: Onboarding not completed, redirecting to /onboarding");
-        router.replace("/onboarding");
-      } else {
-        console.log("RootLayout: Onboarding completed, redirecting to home");
-        router.replace("/(tabs)/(home)");
-      }
-    } catch (error) {
-      console.error("RootLayout: Error checking onboarding status:", error);
-      // If we can't check, assume onboarding is needed
-      setOnboardingChecked(true);
-      router.replace("/onboarding");
-    }
-  }, [user, router]);
+  }, [user, loading, segments, onboardingChecked, router, checkOnboardingAndRedirect]);
 
   React.useEffect(() => {
     if (
