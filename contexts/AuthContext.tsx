@@ -1,7 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
-import { authClient, storeWebBearerToken } from "@/lib/auth";
+import * as SecureStore from "expo-secure-store";
+import { authClient, storeWebBearerToken, BEARER_TOKEN_KEY } from "@/lib/auth";
 
 interface User {
   id: string;
@@ -67,6 +68,24 @@ function openOAuthPopup(provider: string): Promise<string> {
   });
 }
 
+async function storeBearerToken(token: string) {
+  console.log("AuthContext: Storing bearer token");
+  if (Platform.OS === "web") {
+    localStorage.setItem(BEARER_TOKEN_KEY, token);
+  } else {
+    await SecureStore.setItemAsync(BEARER_TOKEN_KEY, token);
+  }
+}
+
+async function clearBearerToken() {
+  console.log("AuthContext: Clearing bearer token");
+  if (Platform.OS === "web") {
+    localStorage.removeItem(BEARER_TOKEN_KEY);
+  } else {
+    await SecureStore.deleteItemAsync(BEARER_TOKEN_KEY);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,16 +99,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext: Fetching user session");
       setLoading(true);
       const session = await authClient.getSession();
-      if (session?.data?.user) {
+      if (session?.data?.user && session?.data?.session) {
         console.log("AuthContext: User session found:", session.data.user.email);
         setUser(session.data.user as User);
+        
+        // Store the bearer token for API calls
+        const token = session.data.session.token;
+        if (token) {
+          console.log("AuthContext: Storing session token for API calls");
+          await storeBearerToken(token);
+        }
       } else {
         console.log("AuthContext: No user session found");
         setUser(null);
+        await clearBearerToken();
       }
     } catch (error) {
       console.error("AuthContext: Failed to fetch user:", error);
       setUser(null);
+      await clearBearerToken();
     } finally {
       setLoading(false);
     }
@@ -100,6 +128,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext: Signing in with email:", email);
       const result = await authClient.signIn.email({ email, password });
       console.log("AuthContext: Sign in API call completed, result:", result);
+      
+      // Store the bearer token
+      if (result?.data?.session?.token) {
+        console.log("AuthContext: Storing bearer token from sign in response");
+        await storeBearerToken(result.data.session.token);
+      }
+      
       await fetchUser();
       console.log("AuthContext: Sign in successful");
     } catch (error: any) {
@@ -119,6 +154,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: name || undefined,
       });
       console.log("AuthContext: Sign up API call completed, result:", result);
+      
+      // Store the bearer token
+      if (result?.data?.session?.token) {
+        console.log("AuthContext: Storing bearer token from sign up response");
+        await storeBearerToken(result.data.session.token);
+      }
+      
       await fetchUser();
       console.log("AuthContext: Sign up successful, user should be redirected to onboarding");
     } catch (error: any) {
@@ -137,13 +179,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = await openOAuthPopup(provider);
         console.log("AuthContext: OAuth popup returned token");
         storeWebBearerToken(token);
+        await storeBearerToken(token);
         await fetchUser();
       } else {
         console.log("AuthContext: Starting native OAuth flow for", provider);
-        await authClient.signIn.social({
+        const result = await authClient.signIn.social({
           provider,
           callbackURL: "/",
         });
+        
+        // Store the bearer token
+        if (result?.data?.session?.token) {
+          console.log("AuthContext: Storing bearer token from social sign in response");
+          await storeBearerToken(result.data.session.token);
+        }
+        
         await fetchUser();
       }
       console.log("AuthContext:", provider, "sign in successful");
@@ -163,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("AuthContext: Signing out");
       await authClient.signOut();
+      await clearBearerToken();
       setUser(null);
       console.log("AuthContext: Sign out successful");
     } catch (error) {

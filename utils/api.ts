@@ -1,3 +1,4 @@
+
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -95,6 +96,9 @@ export const apiPost = async <T = any>(
 ): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
   });
 };
@@ -108,6 +112,9 @@ export const apiPut = async <T = any>(
 ): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
   });
 };
@@ -121,6 +128,9 @@ export const apiPatch = async <T = any>(
 ): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
   });
 };
@@ -132,6 +142,9 @@ export const apiPatch = async <T = any>(
 export const apiDelete = async <T = any>(endpoint: string, data: any = {}): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
   });
 };
@@ -209,6 +222,9 @@ export const authenticatedPut = async <T = any>(
 ): Promise<T> => {
   return authenticatedApiCall<T>(endpoint, {
     method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
   });
 };
@@ -222,6 +238,9 @@ export const authenticatedPatch = async <T = any>(
 ): Promise<T> => {
   return authenticatedApiCall<T>(endpoint, {
     method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
   });
 };
@@ -233,6 +252,9 @@ export const authenticatedPatch = async <T = any>(
 export const authenticatedDelete = async <T = any>(endpoint: string, data: any = {}): Promise<T> => {
   return authenticatedApiCall<T>(endpoint, {
     method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
   });
 };

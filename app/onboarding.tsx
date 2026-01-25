@@ -15,7 +15,7 @@ import {
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { apiPost, apiGet } from "@/utils/api";
+import { authenticatedPost, authenticatedGet } from "@/utils/api";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -52,7 +52,7 @@ export default function OnboardingScreen() {
     setUsernameError("");
 
     try {
-      const response = await apiGet(
+      const response = await authenticatedGet(
         `/api/onboarding/check-username/${usernameToCheck}`
       );
 
@@ -188,7 +188,7 @@ export default function OnboardingScreen() {
     console.log("Completing onboarding with data:", onboardingData);
 
     try {
-      const response = await apiPost(`/api/onboarding/complete`, onboardingData);
+      const response = await authenticatedPost(`/api/onboarding/complete`, onboardingData);
 
       console.log("Onboarding completed successfully:", response);
       Alert.alert("Welcome!", "Your profile has been set up successfully", [
