@@ -33,10 +33,7 @@ function RootLayoutNav() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const [onboardingStatus, setOnboardingStatus] = React.useState<{
-    checked: boolean;
-    completed: boolean;
-  }>({ checked: false, completed: false });
+  const [onboardingChecked, setOnboardingChecked] = React.useState(false);
 
   // Main authentication and routing logic
   React.useEffect(() => {
@@ -47,33 +44,47 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
     const inOnboarding = segments[0] === "onboarding";
+    const inTabs = segments[0] === "(tabs)";
 
-    console.log("RootLayout: Auth check - user:", user?.email, "inAuthGroup:", inAuthGroup, "inOnboarding:", inOnboarding, "segments:", segments);
+    console.log("RootLayout: Auth check - user:", user?.email, "segments:", segments, "inAuthGroup:", inAuthGroup);
 
-    // If no user and not in auth screens, redirect to auth
-    if (!user && !inAuthGroup) {
-      console.log("RootLayout: User not authenticated, redirecting to /auth");
-      setOnboardingStatus({ checked: false, completed: false }); // Reset onboarding status
-      router.replace("/auth");
+    // CRITICAL: If no user, ALWAYS redirect to auth (except if already in auth screens)
+    if (!user) {
+      if (!inAuthGroup) {
+        console.log("RootLayout: No user found, redirecting to /auth");
+        setOnboardingChecked(false); // Reset onboarding check
+        router.replace("/auth");
+      }
       return;
     }
 
-    // If user exists and we're in auth screens, check onboarding
-    if (user && inAuthGroup) {
-      console.log("RootLayout: User authenticated in auth screen, checking onboarding status");
+    // User is authenticated - now check onboarding
+    console.log("RootLayout: User authenticated:", user.email);
+
+    // If user just signed in and is still on auth screen, check onboarding
+    if (inAuthGroup) {
+      console.log("RootLayout: User on auth screen, checking onboarding status");
       checkOnboardingAndRedirect();
       return;
     }
 
-    // If user exists and not in onboarding, verify onboarding is complete
-    if (user && !inOnboarding && !onboardingStatus.checked) {
-      console.log("RootLayout: User authenticated, verifying onboarding status");
+    // If user is trying to access tabs without onboarding check, verify onboarding
+    if (inTabs && !onboardingChecked) {
+      console.log("RootLayout: User accessing tabs, verifying onboarding status");
+      checkOnboardingAndRedirect();
+      return;
+    }
+
+    // If user is not in onboarding and onboarding wasn't checked, check it
+    if (!inOnboarding && !onboardingChecked) {
+      console.log("RootLayout: Verifying onboarding status");
       checkOnboardingAndRedirect();
     }
-  }, [user, loading, segments]);
+  }, [user, loading, segments, onboardingChecked]);
 
   const checkOnboardingAndRedirect = async () => {
-    if (!user || onboardingStatus.checked) {
+    if (!user) {
+      console.log("RootLayout: No user, skipping onboarding check");
       return;
     }
 
@@ -85,9 +96,9 @@ function RootLayoutNav() {
       const { authenticatedGet } = await import("@/utils/api");
       
       const profile = await authenticatedGet(`${BACKEND_URL}/api/users/me`);
-      console.log("RootLayout: Profile data:", profile);
+      console.log("RootLayout: Profile data - onboardingCompleted:", profile.onboardingCompleted);
 
-      setOnboardingStatus({ checked: true, completed: profile.onboardingCompleted });
+      setOnboardingChecked(true);
 
       if (!profile.onboardingCompleted) {
         console.log("RootLayout: Onboarding not completed, redirecting to /onboarding");
@@ -99,7 +110,7 @@ function RootLayoutNav() {
     } catch (error) {
       console.error("RootLayout: Error checking onboarding status:", error);
       // If we can't check, assume onboarding is needed
-      setOnboardingStatus({ checked: true, completed: false });
+      setOnboardingChecked(true);
       router.replace("/onboarding");
     }
   };
