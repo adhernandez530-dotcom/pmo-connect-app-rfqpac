@@ -167,7 +167,7 @@ export default function MessagesScreen() {
           <IconSymbol
             ios_icon_name="archivebox"
             android_material_icon_name="archive"
-            size={24}
+            size={22}
             color={colors.primary}
           />
         </TouchableOpacity>
@@ -179,7 +179,7 @@ export default function MessagesScreen() {
             <IconSymbol
               ios_icon_name="message.slash"
               android_material_icon_name="message"
-              size={48}
+              size={40}
               color={colors.textSecondary}
             />
             <Text style={styles.emptyStateText}>{noConversationsText}</Text>
@@ -221,7 +221,7 @@ export default function MessagesScreen() {
                             <IconSymbol
                               ios_icon_name="bell.slash.fill"
                               android_material_icon_name="notifications-off"
-                              size={14}
+                              size={12}
                               color={colors.textSecondary}
                             />
                           )}
@@ -358,13 +358,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
   },
@@ -372,34 +372,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   swipeableContainer: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     marginVertical: 4,
   },
   conversationCard: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
   },
   conversationContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: colors.primary,
   },
@@ -409,37 +409,37 @@ const styles = StyleSheet.create({
   conversationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     marginBottom: 4,
   },
   fullName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.text,
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: colors.primary,
   },
   lastMessage: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   mutualFriends: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textSecondary,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 48,
+    paddingVertical: 40,
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 16,
+    marginTop: 12,
   },
   modalOverlay: {
     flex: 1,
@@ -450,41 +450,41 @@ const styles = StyleSheet.create({
   previewCard: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     width: '80%',
-    maxWidth: 400,
+    maxWidth: 360,
   },
   previewHeader: {
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  previewAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
     marginBottom: 12,
   },
+  previewAvatar: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    marginBottom: 10,
+  },
   previewAvatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   previewAvatarText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: colors.primary,
   },
   previewName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.text,
   },
   previewMessage: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
   },

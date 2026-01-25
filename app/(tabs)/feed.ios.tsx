@@ -5,6 +5,7 @@ import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import Constants from "expo-constants";
+import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -43,7 +44,13 @@ export default function FeedScreen() {
   const loadFeed = useCallback(async () => {
     try {
       console.log('FeedScreen: Fetching feed from backend');
-      const response = await fetch(`${BACKEND_URL}/api/feed?sort=${sortBy}`);
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/feed?sort=${sortBy}`);
+      if (!response.ok) {
+        console.log('FeedScreen: API returned error status:', response.status);
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
       const data = await response.json();
       console.log('FeedScreen: Feed response received:', data);
       
@@ -74,9 +81,13 @@ export default function FeedScreen() {
 
     try {
       if (post.isLiked) {
-        await fetch(`${BACKEND_URL}/api/posts/${postId}/like`, { method: 'DELETE' });
+        await authenticatedFetch(`${BACKEND_URL}/api/posts/${postId}/like`, { method: 'DELETE' });
       } else {
-        await fetch(`${BACKEND_URL}/api/posts/${postId}/like`, { method: 'POST', body: JSON.stringify({}) });
+        await authenticatedFetch(`${BACKEND_URL}/api/posts/${postId}/like`, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}) 
+        });
       }
       loadFeed();
     } catch (error) {
@@ -92,7 +103,7 @@ export default function FeedScreen() {
   const handleRepost = async (postId: string) => {
     console.log('FeedScreen: User tapped repost on post:', postId);
     try {
-      await fetch(`${BACKEND_URL}/api/posts/${postId}/repost`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/posts/${postId}/repost`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -144,7 +155,7 @@ export default function FeedScreen() {
               <IconSymbol
                 ios_icon_name="newspaper"
                 android_material_icon_name="article"
-                size={64}
+                size={48}
                 color={colors.textSecondary}
               />
               <Text style={styles.emptyStateTitle}>{noPostsText}</Text>
@@ -166,7 +177,7 @@ export default function FeedScreen() {
                     <IconSymbol
                       ios_icon_name="arrow.2.squarepath"
                       android_material_icon_name="repeat"
-                      size={14}
+                      size={12}
                       color={colors.textSecondary}
                     />
                     <Text style={styles.repostText}>{repostInfo}</Text>
@@ -202,7 +213,7 @@ export default function FeedScreen() {
                     <IconSymbol
                       ios_icon_name={post.isLiked ? "heart.fill" : "heart"}
                       android_material_icon_name={post.isLiked ? "favorite" : "favorite-border"}
-                      size={20}
+                      size={18}
                       color={post.isLiked ? colors.primary : colors.textSecondary}
                     />
                     <Text style={styles.actionText}>{likesCountText}</Text>
@@ -212,7 +223,7 @@ export default function FeedScreen() {
                     <IconSymbol
                       ios_icon_name="bubble.left"
                       android_material_icon_name="chat-bubble-outline"
-                      size={20}
+                      size={18}
                       color={colors.textSecondary}
                     />
                     <Text style={styles.actionText}>{commentsCountText}</Text>
@@ -222,7 +233,7 @@ export default function FeedScreen() {
                     <IconSymbol
                       ios_icon_name="arrow.2.squarepath"
                       android_material_icon_name="repeat"
-                      size={20}
+                      size={18}
                       color={post.isReposted ? colors.primary : colors.textSecondary}
                     />
                     <Text style={styles.actionText}>{repostsCountText}</Text>
@@ -244,21 +255,21 @@ const styles = StyleSheet.create({
   },
   sortContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
   },
   sortButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
     backgroundColor: colors.backgroundAlt,
   },
   sortButtonActive: {
     backgroundColor: colors.primary,
   },
   sortButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -272,65 +283,65 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 40,
+    paddingVertical: 60,
+    paddingHorizontal: 32,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
-    marginTop: 16,
+    marginTop: 12,
     textAlign: 'center',
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
-    marginTop: 8,
+    marginTop: 6,
     textAlign: 'center',
   },
   postCard: {
     backgroundColor: colors.backgroundAlt,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    marginHorizontal: 12,
+    marginVertical: 6,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
   },
   repostBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   repostText: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textSecondary,
   },
   postHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.card,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: colors.primary,
   },
@@ -338,40 +349,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fullName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.text,
   },
   username: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textSecondary,
   },
   postMedia: {
     width: '100%',
-    height: 300,
+    height: 240,
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   postContent: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text,
-    lineHeight: 20,
-    marginBottom: 12,
+    lineHeight: 18,
+    marginBottom: 10,
   },
   postActions: {
     flexDirection: 'row',
-    gap: 24,
-    paddingTop: 12,
+    gap: 20,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   actionText: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textSecondary,
   },
 });

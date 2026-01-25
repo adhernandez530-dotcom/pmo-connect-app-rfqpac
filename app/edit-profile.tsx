@@ -7,7 +7,8 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { Toast } from "@/components/Toast";
 import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
-import { authenticatedGet, authenticatedPut, authenticatedPost, authenticatedDelete } from "@/utils/api";
+import { authenticatedGet, authenticatedPut, authenticatedDelete } from "@/utils/api";
+import { authenticatedFetch } from "@/utils/api";
 
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
@@ -156,9 +157,12 @@ export default function EditProfileScreen() {
 
     console.log('EditProfileScreen: Adding service:', newService.trim());
     try {
-      const data = await authenticatedPost('/api/profile/services', {
-        serviceName: newService.trim(),
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/services`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceName: newService.trim() })
       });
+      const data = await response.json();
       console.log('EditProfileScreen: Service added successfully', data);
       setServices([...services, data]);
       setNewService('');
@@ -205,9 +209,12 @@ export default function EditProfileScreen() {
 
     console.log('EditProfileScreen: Adding knowledge topic:', newKnowledge.trim());
     try {
-      const data = await authenticatedPost('/api/profile/knowledge', {
-        topic: newKnowledge.trim(),
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/knowledge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: newKnowledge.trim() })
       });
+      const data = await response.json();
       console.log('EditProfileScreen: Knowledge topic added successfully', data);
       setKnowledge([...knowledge, data]);
       setNewKnowledge('');
@@ -279,23 +286,36 @@ export default function EditProfileScreen() {
             type: type,
           } as any);
 
-          console.log('EditProfileScreen: Sending avatar upload request');
-          const uploadResponse = await authenticatedPost('/api/users/avatar', formData);
+          console.log('EditProfileScreen: Sending avatar upload request to /api/users/avatar');
+          const uploadResponse = await authenticatedFetch(`${BACKEND_URL}/api/users/avatar`, {
+            method: 'POST',
+            body: formData,
+          });
           
-          console.log('EditProfileScreen: Avatar uploaded successfully', uploadResponse);
+          if (!uploadResponse.ok) {
+            throw new Error(`Upload failed with status ${uploadResponse.status}`);
+          }
+
+          const uploadData = await uploadResponse.json();
+          console.log('EditProfileScreen: Avatar uploaded successfully', uploadData);
           
-          if (uploadResponse && uploadResponse.url) {
-            finalAvatarUrl = uploadResponse.url;
-            console.log('EditProfileScreen: New avatar URL:', finalAvatarUrl);
+          if (uploadData && uploadData.url) {
+            finalAvatarUrl = uploadData.url;
+            console.log('EditProfileScreen: New avatar URL from server:', finalAvatarUrl);
+            // Update the avatar URL state immediately so it shows in the UI
+            setAvatarUrl(finalAvatarUrl);
+            setLocalAvatarUri(undefined);
           } else {
-            console.warn('EditProfileScreen: Avatar upload response missing URL, using local URI');
-            finalAvatarUrl = localAvatarUri;
+            console.warn('EditProfileScreen: Avatar upload response missing URL:', uploadData);
+            throw new Error('Upload response missing URL');
           }
         } catch (uploadError) {
           console.error('EditProfileScreen: Error uploading avatar:', uploadError);
           const uploadErrorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
           console.error('EditProfileScreen: Upload error details:', uploadErrorMessage);
-          Alert.alert('Warning', 'Failed to upload avatar image. Continuing with profile update.');
+          Alert.alert('Error', `Failed to upload avatar image: ${uploadErrorMessage}`);
+          setSaving(false);
+          return;
         }
       }
 
