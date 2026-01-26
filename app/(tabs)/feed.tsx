@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Dimensions } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Dimensions, Alert, Modal, TextInput } from "react-native";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
@@ -38,6 +38,10 @@ export default function FeedScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [sortBy, setSortBy] = useState<'recent' | 'popularity'>('recent');
   const [loading, setLoading] = useState(true);
+  const [showPostMenu, setShowPostMenu] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportingPostId, setReportingPostId] = useState<string | null>(null);
 
   const loadFeed = useCallback(async () => {
     try {
@@ -112,6 +116,89 @@ export default function FeedScreen() {
     }
   };
 
+  const handleReportPost = (postId: string) => {
+    console.log('FeedScreen: User tapped report on post:', postId);
+    setReportingPostId(postId);
+    setShowPostMenu(null);
+    setShowReportModal(true);
+  };
+
+  const submitReport = async () => {
+    if (!reportReason.trim()) {
+      Alert.alert("Error", "Please provide a reason for reporting");
+      return;
+    }
+
+    if (!reportingPostId) return;
+
+    console.log('FeedScreen: Submitting report for post:', reportingPostId);
+    try {
+      const response = await authenticatedFetch(
+        `${BACKEND_URL}/api/posts/${reportingPostId}/report`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reportReason })
+        }
+      );
+
+      if (response.ok) {
+        Alert.alert("Success", "Post has been reported");
+        setShowReportModal(false);
+        setReportReason("");
+        setReportingPostId(null);
+      } else {
+        throw new Error("Failed to report post");
+      }
+    } catch (error) {
+      console.error('FeedScreen: Error reporting post:', error);
+      Alert.alert("Error", "Failed to report post");
+    }
+  };
+
+  const handleBlockUser = (userId: string, username: string) => {
+    console.log('FeedScreen: User tapped block on user:', username);
+    setShowPostMenu(null);
+    Alert.alert(
+      "Block User",
+      `Are you sure you want to block ${username}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            console.log('FeedScreen: Blocking user:', userId);
+            try {
+              const response = await authenticatedFetch(
+                `${BACKEND_URL}/api/users/${userId}/block`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({})
+                }
+              );
+
+              if (response.ok) {
+                Alert.alert("Success", `${username} has been blocked`);
+                // Remove posts from this user from the feed
+                setPosts(posts.filter(p => p.userId !== userId));
+              } else {
+                throw new Error("Failed to block user");
+              }
+            } catch (error) {
+              console.error('FeedScreen: Error blocking user:', error);
+              Alert.alert("Error", "Failed to block user");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getInitials = (name: string) => {
     const nameParts = name.split(' ');
     const firstInitial = nameParts[0]?.[0] || '';
@@ -153,6 +240,8 @@ export default function FeedScreen() {
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
+        onScroll={() => setShowPostMenu(null)}
+        scrollEventThrottle={16}
       >
         {posts.length === 0 && !loading && (
           <View style={styles.emptyState}>
@@ -173,6 +262,7 @@ export default function FeedScreen() {
           const commentsCountText = `${post.commentsCount}`;
           const repostsCountText = `${post.repostsCount}`;
           const repostInfo = post.repostOf ? `Reposted by ${post.repostOf.fullName}` : '';
+          const isMenuOpen = showPostMenu === post.id;
 
           return (
             <View key={index} style={styles.postCard}>
@@ -202,6 +292,14 @@ export default function FeedScreen() {
                     <Text style={styles.username} numberOfLines={1}>@{post.username}</Text>
                   </View>
                 </View>
+                <TouchableOpacity onPress={() => setShowPostMenu(post.id)}>
+                  <IconSymbol
+                    ios_icon_name="ellipsis"
+                    android_material_icon_name="more-vert"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
               </View>
 
               {post.mediaUrl && (
@@ -243,10 +341,78 @@ export default function FeedScreen() {
                   <Text style={styles.actionText}>{repostsCountText}</Text>
                 </TouchableOpacity>
               </View>
+
+              {isMenuOpen && (
+                <View style={styles.postMenu}>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => handleReportPost(post.id)}
+                  >
+                    <IconSymbol
+                      ios_icon_name="exclamationmark.triangle"
+                      android_material_icon_name="report"
+                      size={18}
+                      color={colors.error}
+                    />
+                    <Text style={styles.menuItemText}>Report Post</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => handleBlockUser(post.userId, post.username)}
+                  >
+                    <IconSymbol
+                      ios_icon_name="hand.raised.fill"
+                      android_material_icon_name="block"
+                      size={18}
+                      color={colors.error}
+                    />
+                    <Text style={styles.menuItemText}>Block User</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           );
         })}
       </ScrollView>
+
+      {/* Report Modal */}
+      <Modal
+        visible={showReportModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowReportModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Report Post</Text>
+              <TouchableOpacity onPress={() => setShowReportModal(false)}>
+                <IconSymbol
+                  ios_icon_name="xmark"
+                  android_material_icon_name="close"
+                  size={24}
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={styles.reportInput}
+              placeholder="Why are you reporting this post?"
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              value={reportReason}
+              onChangeText={setReportReason}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={submitReport}
+            >
+              <Text style={styles.submitButtonText}>Submit Report</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -407,5 +573,77 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  postMenu: {
+    position: 'absolute',
+    top: 40,
+    right: 12,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minWidth: 160,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  reportInput: {
+    fontSize: 16,
+    color: colors.text,
+    padding: 16,
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.background,
   },
 });

@@ -219,6 +219,14 @@ export default function HomeScreen() {
           headerLargeTitle: true,
           headerRight: () => (
             <View style={styles.headerIcons}>
+              <TouchableOpacity onPress={() => router.push('/drafts')} style={styles.iconButton}>
+                <IconSymbol 
+                  ios_icon_name="doc.text" 
+                  android_material_icon_name="description" 
+                  size={24} 
+                  color={colors.primary} 
+                />
+              </TouchableOpacity>
               <TouchableOpacity onPress={handleNotificationPress} style={styles.iconButton}>
                 <View style={styles.notificationIconContainer}>
                   <IconSymbol 

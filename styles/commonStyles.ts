@@ -11,6 +11,7 @@ export const colors = {
   card: '#1F2937',       // Dark card
   highlight: '#00D9A3',  // Highlight color
   border: '#2D3748',     // Border color
+  error: '#FF3B30',      // Error/danger color
 };
 
 export const buttonStyles = StyleSheet.create({

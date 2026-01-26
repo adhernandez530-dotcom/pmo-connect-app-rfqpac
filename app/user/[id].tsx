@@ -10,6 +10,7 @@ import {
   Alert,
   ImageSourcePropType,
   Image,
+  Modal,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import Constants from "expo-constants";
@@ -61,6 +62,8 @@ export default function UserProfileScreen() {
   const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatus>("none");
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
 
   const loadUserProfile = React.useCallback(async () => {
     console.log("UserProfileScreen: Fetching user profile");
@@ -161,6 +164,82 @@ export default function UserProfileScreen() {
     router.push(`/chat/${id}`);
   };
 
+  const handleBlockUser = () => {
+    console.log("UserProfileScreen: User tapped block");
+    setShowOptionsMenu(false);
+    Alert.alert(
+      "Block User",
+      `Are you sure you want to block ${profile?.username}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            console.log("UserProfileScreen: Blocking user:", id);
+            try {
+              const response = await authenticatedFetch(
+                `${BACKEND_URL}/api/users/${id}/block`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({}),
+                }
+              );
+
+              if (response.ok) {
+                Alert.alert("Success", `${profile?.username} has been blocked`, [
+                  {
+                    text: "OK",
+                    onPress: () => router.back(),
+                  },
+                ]);
+                setIsBlocked(true);
+              } else {
+                throw new Error("Failed to block user");
+              }
+            } catch (error) {
+              console.error("UserProfileScreen: Error blocking user:", error);
+              Alert.alert("Error", "Failed to block user");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReportUser = () => {
+    console.log("UserProfileScreen: User tapped report");
+    setShowOptionsMenu(false);
+    Alert.prompt(
+      "Report User",
+      "Please provide a reason for reporting this user:",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Submit",
+          onPress: async (reason) => {
+            if (!reason || !reason.trim()) {
+              Alert.alert("Error", "Please provide a reason");
+              return;
+            }
+            console.log("UserProfileScreen: Reporting user with reason:", reason);
+            // Note: The API doesn't have a user report endpoint, only post reports
+            // This would need to be added to the backend if user reporting is needed
+            Alert.alert("Info", "User reporting feature is not yet available");
+          },
+        },
+      ],
+      "plain-text"
+    );
+  };
+
   const getInitials = (name: string) => {
     const nameParts = name.split(" ");
     const firstInitial = nameParts[0]?.[0] || "";
@@ -208,6 +287,16 @@ export default function UserProfileScreen() {
           headerShown: true,
           title: profile.username,
           headerBackTitle: "Back",
+          headerRight: () => (
+            <TouchableOpacity onPress={() => setShowOptionsMenu(true)}>
+              <IconSymbol
+                ios_icon_name="ellipsis.circle"
+                android_material_icon_name="more-vert"
+                size={24}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+          ),
         }}
       />
       <ScrollView
@@ -310,6 +399,48 @@ export default function UserProfileScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Options Menu Modal */}
+      <Modal
+        visible={showOptionsMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOptionsMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowOptionsMenu(false)}
+        >
+          <View style={styles.optionsMenu}>
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={handleBlockUser}
+            >
+              <IconSymbol
+                ios_icon_name="hand.raised.fill"
+                android_material_icon_name="block"
+                size={20}
+                color={colors.error}
+              />
+              <Text style={[styles.optionText, styles.optionTextDanger]}>Block User</Text>
+            </TouchableOpacity>
+            <View style={styles.optionDivider} />
+            <TouchableOpacity
+              style={styles.optionItem}
+              onPress={handleReportUser}
+            >
+              <IconSymbol
+                ios_icon_name="exclamationmark.triangle"
+                android_material_icon_name="report"
+                size={20}
+                color={colors.error}
+              />
+              <Text style={[styles.optionText, styles.optionTextDanger]}>Report User</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -455,5 +586,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  optionsMenu: {
+    backgroundColor: colors.background,
+    marginHorizontal: 16,
+    marginBottom: Platform.OS === "ios" ? 100 : 80,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  optionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+  },
+  optionText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  optionTextDanger: {
+    color: colors.error,
+  },
+  optionDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 16,
   },
 });

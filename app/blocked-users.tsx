@@ -4,7 +4,7 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, 
 import { Stack } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { authenticatedGet, authenticatedDelete } from "@/utils/api";
+import { authenticatedGet, authenticatedFetch, BACKEND_URL } from "@/utils/api";
 
 interface BlockedUser {
   id: string;
@@ -31,7 +31,7 @@ export default function BlockedUsersScreen() {
   const loadBlockedUsers = async () => {
     console.log('BlockedUsers: Loading blocked users');
     try {
-      const response = await authenticatedGet<BlockedUser[]>('/api/settings/blocked-users');
+      const response = await authenticatedGet<BlockedUser[]>('/api/users/blocked');
       console.log('BlockedUsers: Loaded blocked users:', response);
       setBlockedUsers(response);
       setLoading(false);
@@ -57,10 +57,16 @@ export default function BlockedUsersScreen() {
           onPress: async () => {
             console.log('BlockedUsers: Unblocking user:', userId);
             try {
-              await authenticatedDelete(`/api/settings/blocked-users/${userId}`);
-              console.log('BlockedUsers: User unblocked successfully');
-              setBlockedUsers(prev => prev.filter(user => user.id !== userId));
-              Alert.alert('Success', `${username} has been unblocked`);
+              const response = await authenticatedFetch(`${BACKEND_URL}/api/users/${userId}/block`, {
+                method: 'DELETE',
+              });
+              if (response.ok) {
+                console.log('BlockedUsers: User unblocked successfully');
+                setBlockedUsers(prev => prev.filter(user => user.id !== userId));
+                Alert.alert('Success', `${username} has been unblocked`);
+              } else {
+                throw new Error('Failed to unblock user');
+              }
             } catch (error) {
               console.error('BlockedUsers: Error unblocking user:', error);
               Alert.alert('Error', 'Failed to unblock user');
