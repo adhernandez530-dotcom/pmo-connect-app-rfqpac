@@ -5,7 +5,7 @@ import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useAuth } from "@/contexts/AuthContext";
-import { authenticatedPost } from "@/utils/api";
+import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -36,19 +36,34 @@ export default function SettingsScreen() {
             setIsLoggingOut(true);
             try {
               // Call backend logout endpoint
-              const data = await authenticatedPost<{ success: boolean; message: string }>('/api/account/logout', {});
+              console.log('SettingsScreen: Calling backend logout endpoint');
+              const response = await authenticatedFetch(`${BACKEND_URL}/api/account/logout`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({}),
+              });
               
-              console.log('SettingsScreen: Logout response:', data);
+              if (!response.ok) {
+                console.error('SettingsScreen: Backend logout failed with status:', response.status);
+                throw new Error('Failed to logout from backend');
+              }
+              
+              const data = await response.json();
+              console.log('SettingsScreen: Backend logout response:', data);
               
               // Sign out from auth context (clears local session)
+              console.log('SettingsScreen: Clearing local auth session');
               await signOut();
               
-              console.log('SettingsScreen: Navigating to auth screen');
+              console.log('SettingsScreen: Logout successful, navigating to auth screen');
               // Navigate directly to auth screen
               router.replace('/auth');
             } catch (error) {
               console.error('SettingsScreen: Error logging out:', error);
               Alert.alert('Error', 'Failed to log out. Please try again.');
+            } finally {
               setIsLoggingOut(false);
             }
           },
@@ -58,21 +73,31 @@ export default function SettingsScreen() {
   };
 
   const handleRequestVerificationCode = async () => {
-    console.log('SettingsScreen: Requesting verification code');
+    console.log('SettingsScreen: Requesting verification code for account deactivation');
     setIsRequestingCode(true);
     try {
-      const data = await authenticatedPost<{ success: boolean; message: string }>(
-        '/api/account/deactivate/request-code',
-        {}
-      );
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/account/deactivate/request-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
       
+      if (!response.ok) {
+        console.error('SettingsScreen: Request code failed with status:', response.status);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to send verification code');
+      }
+      
+      const data = await response.json();
       console.log('SettingsScreen: Request code response:', data);
       
       Alert.alert('Verification Code Sent', data.message || 'A verification code has been sent to your phone number.');
       setShowVerificationModal(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('SettingsScreen: Error requesting verification code:', error);
-      Alert.alert('Error', 'Failed to send verification code. Please ensure you have a phone number on file.');
+      Alert.alert('Error', error.message || 'Failed to send verification code. Please ensure you have a phone number on file.');
     } finally {
       setIsRequestingCode(false);
     }
@@ -87,11 +112,21 @@ export default function SettingsScreen() {
     console.log('SettingsScreen: Verifying code and deactivating account');
     setIsVerifyingCode(true);
     try {
-      const data = await authenticatedPost<{ success: boolean; message: string }>(
-        '/api/account/deactivate/verify',
-        { code: verificationCode }
-      );
+      const response = await authenticatedFetch(`${BACKEND_URL}/api/account/deactivate/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: verificationCode }),
+      });
       
+      if (!response.ok) {
+        console.error('SettingsScreen: Verify code failed with status:', response.status);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Invalid or expired verification code');
+      }
+      
+      const data = await response.json();
       console.log('SettingsScreen: Verify response:', data);
       
       // Close modal
@@ -99,14 +134,15 @@ export default function SettingsScreen() {
       setVerificationCode("");
       
       // Sign out from auth context (clears local session)
+      console.log('SettingsScreen: Account deactivated, clearing local session');
       await signOut();
       
       Alert.alert('Account Deactivated', data.message || 'Your account has been deactivated successfully');
       // Navigate to auth screen
       router.replace('/auth');
-    } catch (error) {
+    } catch (error: any) {
       console.error('SettingsScreen: Error verifying code:', error);
-      Alert.alert('Error', 'Invalid or expired verification code. Please try again.');
+      Alert.alert('Error', error.message || 'Invalid or expired verification code. Please try again.');
     } finally {
       setIsVerifyingCode(false);
     }
