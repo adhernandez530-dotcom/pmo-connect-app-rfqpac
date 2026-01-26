@@ -23,6 +23,7 @@ import { registerPrivacySettingsRoutes } from './routes/privacy-settings.js';
 import { registerUploadRoutes } from './routes/upload.js';
 import { registerPostsExtendedRoutes } from './routes/posts-extended.js';
 import { registerUserManagementRoutes } from './routes/user-management.js';
+import { registerAuthDebugRoutes } from './routes/auth-debug.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -33,24 +34,46 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
-// Enable authentication with social providers and configuration
-app.withAuth({
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    },
-    apple: {
-      clientId: process.env.APPLE_CLIENT_ID,
-      clientSecret: process.env.APPLE_CLIENT_SECRET,
-    },
+// Configure social providers - only include if credentials are available
+const socialProviders: any = {};
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  socialProviders.google = {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  };
+}
+
+if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
+  socialProviders.apple = {
+    clientId: process.env.APPLE_CLIENT_ID,
+    clientSecret: process.env.APPLE_CLIENT_SECRET,
+  };
+}
+
+// Enable authentication with social providers
+const authConfig: any = {};
+if (Object.keys(socialProviders).length > 0) {
+  authConfig.socialProviders = socialProviders;
+}
+
+app.withAuth(authConfig);
+
+// Log authentication configuration
+app.logger.info(
+  {
+    googleConfigured: !!socialProviders.google,
+    appleConfigured: !!socialProviders.apple,
   },
-});
+  'Authentication configured'
+);
 
 // Enable storage
 app.withStorage();
 
 // Register routes - IMPORTANT: Always use registration functions to avoid circular dependency issues
+// Register auth debug routes first for early diagnostics
+registerAuthDebugRoutes(app);
 registerInitRoutes(app);
 registerUserRoutes(app);
 registerSkillRoutes(app);
