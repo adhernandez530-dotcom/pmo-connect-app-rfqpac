@@ -24,6 +24,7 @@ import { registerUploadRoutes } from './routes/upload.js';
 import { registerPostsExtendedRoutes } from './routes/posts-extended.js';
 import { registerUserManagementRoutes } from './routes/user-management.js';
 import { registerAuthDebugRoutes } from './routes/auth-debug.js';
+import { registerOAuthConfigRoutes } from './routes/oauth-config.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -34,36 +35,34 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
-// Configure social providers - only include if credentials are available
-const socialProviders: any = {};
-
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  socialProviders.google = {
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  };
-}
-
-if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
-  socialProviders.apple = {
-    clientId: process.env.APPLE_CLIENT_ID,
-    clientSecret: process.env.APPLE_CLIENT_SECRET,
-  };
-}
-
-// Enable authentication with social providers
-const authConfig: any = {};
-if (Object.keys(socialProviders).length > 0) {
-  authConfig.socialProviders = socialProviders;
-}
+// Configure social providers with Google and Apple OAuth
+// Note: Credentials can be provided via environment variables for custom OAuth
+// If not provided, the framework uses a proxy service for social authentication
+const authConfig: any = {
+  socialProviders: {
+    google: process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? {
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        }
+      : undefined,
+    apple: process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET
+      ? {
+          clientId: process.env.APPLE_CLIENT_ID,
+          clientSecret: process.env.APPLE_CLIENT_SECRET,
+        }
+      : undefined,
+  },
+};
 
 app.withAuth(authConfig);
 
 // Log authentication configuration
 app.logger.info(
   {
-    googleConfigured: !!socialProviders.google,
-    appleConfigured: !!socialProviders.apple,
+    googleConfigured: !!authConfig.socialProviders.google,
+    appleConfigured: !!authConfig.socialProviders.apple,
+    message: 'OAuth providers configured. If credentials are not set, framework uses proxy service.',
   },
   'Authentication configured'
 );
@@ -72,8 +71,9 @@ app.logger.info(
 app.withStorage();
 
 // Register routes - IMPORTANT: Always use registration functions to avoid circular dependency issues
-// Register auth debug routes first for early diagnostics
+// Register auth and OAuth debug routes first for early diagnostics
 registerAuthDebugRoutes(app);
+registerOAuthConfigRoutes(app);
 registerInitRoutes(app);
 registerUserRoutes(app);
 registerSkillRoutes(app);
