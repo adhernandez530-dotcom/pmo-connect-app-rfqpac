@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("AuthContext: Signing in with email:", email);
       const result = await authClient.signIn.email({ email, password });
-      console.log("AuthContext: Sign in API call completed, result:", result);
+      console.log("AuthContext: Sign in API call completed");
       
       // Store the bearer token
       if (result?.data?.session?.token) {
@@ -139,17 +139,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext: Sign in successful");
     } catch (error: any) {
       console.error("AuthContext: Email sign in failed:", error);
+      console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));
       
       // Extract meaningful error message with better context
-      let errorMessage = error?.body?.message || error?.message || "Sign in failed. Please check your credentials.";
+      let errorMessage = "Sign in failed. Please try again.";
       
-      // Provide more specific error messages
-      if (error?.status === 403 || errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
-        errorMessage = "Authentication service is temporarily unavailable. Please try again in a moment.";
-      } else if (error?.status === 401 || errorMessage.includes("401") || errorMessage.includes("Invalid credentials")) {
+      // Check for specific error types
+      if (error?.status === 403 || error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
+        errorMessage = "The authentication service is currently being updated. Please wait a moment and try again.";
+      } else if (error?.status === 401 || error?.message?.includes("401") || error?.message?.includes("Invalid credentials")) {
         errorMessage = "Invalid email or password. Please check your credentials and try again.";
-      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+      } else if (error?.status === 400 || error?.message?.includes("400")) {
+        errorMessage = "Invalid request. Please check your email and password format.";
+      } else if (error?.message?.includes("network") || error?.message?.includes("fetch") || error?.message?.includes("Failed to fetch")) {
         errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error?.body?.message) {
+        errorMessage = error.body.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
       }
       
       throw new Error(errorMessage);
@@ -164,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         name: name || undefined,
       });
-      console.log("AuthContext: Sign up API call completed, result:", result);
+      console.log("AuthContext: Sign up API call completed");
       
       // Store the bearer token
       if (result?.data?.session?.token) {
@@ -176,21 +183,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext: Sign up successful, user should be redirected to onboarding");
     } catch (error: any) {
       console.error("AuthContext: Email sign up failed:", error);
+      console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));
       
       // Extract meaningful error message with better context
-      let errorMessage = error?.body?.message || error?.message || "Sign up failed. Please try again.";
+      let errorMessage = "Sign up failed. Please try again.";
       
-      // Provide more specific error messages
-      if (error?.status === 403 || errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
-        errorMessage = "Authentication service is temporarily unavailable. Please try again in a moment.";
-      } else if (errorMessage.includes("already exists") || errorMessage.includes("duplicate")) {
+      // Check for specific error types
+      if (error?.status === 403 || error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
+        errorMessage = "The authentication service is currently being updated. Please wait a moment and try again.";
+      } else if (error?.status === 400 || error?.message?.includes("400")) {
+        errorMessage = "Invalid request. Please check your email and password format.";
+      } else if (error?.message?.includes("already exists") || error?.message?.includes("duplicate")) {
         errorMessage = "An account with this email already exists. Please sign in instead.";
-      } else if (errorMessage.includes("invalid email")) {
+      } else if (error?.message?.includes("invalid email")) {
         errorMessage = "Please enter a valid email address.";
-      } else if (errorMessage.includes("password")) {
+      } else if (error?.message?.includes("password")) {
         errorMessage = "Password must be at least 6 characters long.";
-      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+      } else if (error?.message?.includes("network") || error?.message?.includes("fetch") || error?.message?.includes("Failed to fetch")) {
         errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error?.body?.message) {
+        errorMessage = error.body.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
       }
       
       throw new Error(errorMessage);
@@ -225,17 +239,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext:", provider, "sign in successful");
     } catch (error: any) {
       console.error(`AuthContext: ${provider} sign in failed:`, error);
+      console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));
       
       // Extract meaningful error message with better context
-      let errorMessage = error?.message || error?.body?.message || `${provider} sign in failed. Please try again.`;
+      const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+      let errorMessage = `${providerName} sign in failed. Please try again.`;
       
-      // Provide more specific error messages
-      if (error?.status === 403 || errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
-        errorMessage = `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign in is temporarily unavailable. Please try email sign in or try again later.`;
-      } else if (error?.status === 401 || errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
-        errorMessage = `${provider.charAt(0).toUpperCase() + provider.slice(1)} authentication failed. Please check your account settings.`;
-      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+      // Check for specific error types
+      if (error?.status === 403 || error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
+        errorMessage = `The authentication service is currently being updated. Please wait a moment and try ${providerName} sign in again, or use email sign in.`;
+      } else if (error?.status === 401 || error?.message?.includes("401") || error?.message?.includes("Unauthorized")) {
+        errorMessage = `${providerName} authentication failed. Please check your ${providerName} account settings.`;
+      } else if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
+        // Don't show error for user cancellation
+        console.log("AuthContext: User cancelled OAuth flow");
+        return;
+      } else if (error?.message?.includes("popup")) {
+        errorMessage = `Please allow popups in your browser to sign in with ${providerName}.`;
+      } else if (error?.message?.includes("network") || error?.message?.includes("fetch") || error?.message?.includes("Failed to fetch")) {
         errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error?.body?.message) {
+        errorMessage = error.body.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
       }
       
       throw new Error(errorMessage);

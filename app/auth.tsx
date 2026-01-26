@@ -63,7 +63,18 @@ export default function AuthScreen() {
     } catch (error: any) {
       console.error("Authentication error:", error);
       const errorMessage = error.message || error.toString() || "Authentication failed";
-      Alert.alert("Authentication Error", errorMessage);
+      
+      // Show user-friendly error message
+      Alert.alert(
+        "Authentication Error", 
+        errorMessage,
+        [
+          {
+            text: "OK",
+            onPress: () => console.log("User dismissed auth error alert")
+          }
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -84,19 +95,21 @@ export default function AuthScreen() {
       console.log("Social auth successful - root layout will handle navigation");
     } catch (error: any) {
       console.error("Social auth error:", error);
-      let errorMessage = error.message || error.toString() || "Authentication failed";
+      const errorMessage = error.message || error.toString() || "Authentication failed";
       
-      // Provide more helpful error messages
-      if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
-        errorMessage = "Authentication service is currently unavailable. Please try again in a moment or use email sign in.";
-      } else if (errorMessage.includes("popup")) {
-        errorMessage = "Please allow popups in your browser to sign in with " + provider.charAt(0).toUpperCase() + provider.slice(1) + ".";
-      } else if (errorMessage.includes("cancelled")) {
-        // Don't show error for user cancellation
-        return;
+      // Only show alert if there's an actual error (not user cancellation)
+      if (!errorMessage.includes("cancelled") && !errorMessage.includes("canceled")) {
+        Alert.alert(
+          "Authentication Error", 
+          errorMessage,
+          [
+            {
+              text: "OK",
+              onPress: () => console.log("User dismissed social auth error alert")
+            }
+          ]
+        );
       }
-      
-      Alert.alert("Authentication Error", errorMessage);
     } finally {
       setLoading(false);
     }
