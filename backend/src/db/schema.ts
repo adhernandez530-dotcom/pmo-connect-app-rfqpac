@@ -60,8 +60,13 @@ export const posts = pgTable('posts', {
     .references(() => user.id, { onDelete: 'cascade' }),
   content: text('content'),
   mediaUrl: text('media_url'),
-  mediaType: text('media_type'), // 'photo', 'video', 'audio'
+  mediaType: text('media_type'), // 'image', 'video', 'audio'
+  location: text('location'), // Location tag (e.g., "San Francisco, CA")
   repostOfId: uuid('repost_of_id'), // Self-reference for reposts (no FK constraint to avoid issues)
+  isRepost: boolean('is_repost').default(false).notNull(),
+  originalPostId: uuid('original_post_id'), // Reference to original post if reposted
+  isDraft: boolean('is_draft').default(false).notNull(),
+  taggedUserIds: text('tagged_user_ids').array(), // Array of user IDs tagged in the post
   likesCount: integer('likes_count').default(0).notNull(),
   commentsCount: integer('comments_count').default(0).notNull(),
   repostsCount: integer('reposts_count').default(0).notNull(),
@@ -297,5 +302,42 @@ export const userPrivacySettings = pgTable(
   },
   (table) => ({
     userIdUnique: unique().on(table.userId),
+  })
+);
+
+/**
+ * Post Reports
+ * User reports for inappropriate or harmful posts
+ */
+export const postReports = pgTable('post_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id')
+    .notNull()
+    .references(() => posts.id, { onDelete: 'cascade' }),
+  reporterId: text('reporter_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  reason: text('reason').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+/**
+ * Blocked Users
+ * Tracks which users have blocked other users
+ */
+export const blockedUsers = pgTable(
+  'blocked_users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    blockedUserId: text('blocked_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userBlockedUnique: unique().on(table.userId, table.blockedUserId),
   })
 );

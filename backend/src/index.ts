@@ -21,6 +21,8 @@ import { registerAccountRoutes } from './routes/account.js';
 import { registerGroupChatRoutes } from './routes/group-chat.js';
 import { registerPrivacySettingsRoutes } from './routes/privacy-settings.js';
 import { registerUploadRoutes } from './routes/upload.js';
+import { registerPostsExtendedRoutes } from './routes/posts-extended.js';
+import { registerUserManagementRoutes } from './routes/user-management.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -67,6 +69,8 @@ registerAccountRoutes(app);
 registerGroupChatRoutes(app);
 registerPrivacySettingsRoutes(app);
 registerUploadRoutes(app);
+registerPostsExtendedRoutes(app);
+registerUserManagementRoutes(app);
 
 await app.run();
 app.logger.info('PUT ME ON app running successfully');

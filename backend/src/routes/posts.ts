@@ -101,9 +101,9 @@ export function registerPostRoutes(app: App) {
 
   /**
    * POST /api/posts
-   * Create a new post with optional media upload
+   * Create a new post with optional media upload and Instagram-like features
    * Accepts: multipart form data with 'content' (text) and 'media' (optional file)
-   * Or: JSON body with 'content' (text), 'mediaUrl' (string), and 'mediaType' (string)
+   * Or: JSON body with content, mediaUrl, mediaType, location, taggedUserIds, isRepost, originalPostId
    */
   app.fastify.post('/api/posts', async (request: FastifyRequest, reply: FastifyReply) => {
     const session = await requireAuth(request, reply);
@@ -115,6 +115,10 @@ export function registerPostRoutes(app: App) {
       let content: string | null = null;
       let mediaUrl: string | null = null;
       let mediaType: string | null = null;
+      let location: string | null = null;
+      let taggedUserIds: string[] | null = null;
+      let isRepost = false;
+      let originalPostId: string | null = null;
 
       // Check if this is multipart (file upload) or JSON
       const contentType = request.headers['content-type'];
@@ -127,6 +131,18 @@ export function registerPostRoutes(app: App) {
           if (part.type === 'field') {
             if (part.fieldname === 'content') {
               content = part.value as string;
+            } else if (part.fieldname === 'location') {
+              location = part.value as string;
+            } else if (part.fieldname === 'taggedUserIds') {
+              try {
+                taggedUserIds = JSON.parse(part.value as string);
+              } catch (e) {
+                // Continue if parsing fails
+              }
+            } else if (part.fieldname === 'isRepost') {
+              isRepost = (part.value as string).toLowerCase() === 'true';
+            } else if (part.fieldname === 'originalPostId') {
+              originalPostId = part.value as string;
             }
           } else if (part.type === 'file' && part.fieldname === 'media') {
             const file = part;
@@ -178,17 +194,31 @@ export function registerPostRoutes(app: App) {
           content?: string;
           mediaUrl?: string;
           mediaType?: string;
+          location?: string;
+          taggedUserIds?: string[];
+          isRepost?: boolean;
+          originalPostId?: string;
         };
 
         content = body.content || null;
         mediaUrl = body.mediaUrl || null;
         mediaType = body.mediaType || null;
+        location = body.location || null;
+        taggedUserIds = body.taggedUserIds || null;
+        isRepost = body.isRepost || false;
+        originalPostId = body.originalPostId || null;
       }
 
       // Validate post has content or media
       if (!content && !mediaUrl) {
         app.logger.warn({ userId: session.user.id }, 'Post must have content or media');
         return reply.status(400).send({ error: 'Post must have content or media' });
+      }
+
+      // If isRepost, originalPostId is required
+      if (isRepost && !originalPostId) {
+        app.logger.warn({ userId: session.user.id }, 'Repost requires originalPostId');
+        return reply.status(400).send({ error: 'Repost requires original post ID' });
       }
 
       // Create post in database
@@ -199,11 +229,15 @@ export function registerPostRoutes(app: App) {
           content: content,
           mediaUrl: mediaUrl,
           mediaType: mediaType,
+          location: location,
+          taggedUserIds: taggedUserIds,
+          isRepost,
+          originalPostId: originalPostId as any,
         })
         .returning();
 
       app.logger.info(
-        { userId: session.user.id, postId: post[0].id, hasMedia: !!mediaUrl },
+        { userId: session.user.id, postId: post[0].id, hasMedia: !!mediaUrl, isRepost },
         'Post created successfully'
       );
       return post[0];
