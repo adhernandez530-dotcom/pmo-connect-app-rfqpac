@@ -139,8 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext: Sign in successful");
     } catch (error: any) {
       console.error("AuthContext: Email sign in failed:", error);
-      // Extract meaningful error message
-      const errorMessage = error?.body?.message || error?.message || "Sign in failed. Please check your credentials.";
+      
+      // Extract meaningful error message with better context
+      let errorMessage = error?.body?.message || error?.message || "Sign in failed. Please check your credentials.";
+      
+      // Provide more specific error messages
+      if (error?.status === 403 || errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+        errorMessage = "Authentication service is temporarily unavailable. Please try again in a moment.";
+      } else if (error?.status === 401 || errorMessage.includes("401") || errorMessage.includes("Invalid credentials")) {
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      }
+      
       throw new Error(errorMessage);
     }
   };
@@ -165,8 +176,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext: Sign up successful, user should be redirected to onboarding");
     } catch (error: any) {
       console.error("AuthContext: Email sign up failed:", error);
-      // Extract meaningful error message
-      const errorMessage = error?.body?.message || error?.message || "Sign up failed. Please try again.";
+      
+      // Extract meaningful error message with better context
+      let errorMessage = error?.body?.message || error?.message || "Sign up failed. Please try again.";
+      
+      // Provide more specific error messages
+      if (error?.status === 403 || errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+        errorMessage = "Authentication service is temporarily unavailable. Please try again in a moment.";
+      } else if (errorMessage.includes("already exists") || errorMessage.includes("duplicate")) {
+        errorMessage = "An account with this email already exists. Please sign in instead.";
+      } else if (errorMessage.includes("invalid email")) {
+        errorMessage = "Please enter a valid email address.";
+      } else if (errorMessage.includes("password")) {
+        errorMessage = "Password must be at least 6 characters long.";
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      }
+      
       throw new Error(errorMessage);
     }
   };
@@ -199,8 +225,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("AuthContext:", provider, "sign in successful");
     } catch (error: any) {
       console.error(`AuthContext: ${provider} sign in failed:`, error);
-      // Extract meaningful error message
-      const errorMessage = error?.message || `${provider} sign in failed. Please try again.`;
+      
+      // Extract meaningful error message with better context
+      let errorMessage = error?.message || error?.body?.message || `${provider} sign in failed. Please try again.`;
+      
+      // Provide more specific error messages
+      if (error?.status === 403 || errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+        errorMessage = `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign in is temporarily unavailable. Please try email sign in or try again later.`;
+      } else if (error?.status === 401 || errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+        errorMessage = `${provider.charAt(0).toUpperCase() + provider.slice(1)} authentication failed. Please check your account settings.`;
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      }
+      
       throw new Error(errorMessage);
     }
   };

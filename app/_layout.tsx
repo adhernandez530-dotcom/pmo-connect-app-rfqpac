@@ -44,11 +44,9 @@ function RootLayoutNav() {
     console.log("RootLayout: Checking onboarding status for user:", user.email);
 
     try {
-      const Constants = await import("expo-constants");
-      const BACKEND_URL = Constants.default.expoConfig?.extra?.backendUrl || "http://localhost:3000";
       const { authenticatedGet } = await import("@/utils/api");
       
-      const profile = await authenticatedGet(`${BACKEND_URL}/api/users/me`);
+      const profile = await authenticatedGet("/api/users/me");
       console.log("RootLayout: Profile data - onboardingCompleted:", profile.onboardingCompleted);
 
       setOnboardingChecked(true);

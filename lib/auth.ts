@@ -4,7 +4,16 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-const API_URL = "https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev";
+// CRITICAL: Always read backend URL from app.json configuration
+// This is set automatically when the backend is deployed
+const API_URL = Constants.expoConfig?.extra?.backendUrl || "";
+
+if (!API_URL) {
+  console.error("❌ CRITICAL: Backend URL not configured in app.json!");
+  console.error("Please ensure expo.extra.backendUrl is set in app.json");
+} else {
+  console.log("✅ Auth client configured with backend URL:", API_URL);
+}
 
 export const BEARER_TOKEN_KEY = "putmeon_bearer_token";
 

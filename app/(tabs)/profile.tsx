@@ -1,13 +1,10 @@
 
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, Image, ImageSourcePropType } from "react-native";
-import { authenticatedFetch } from "@/utils/api";
-import Constants from "expo-constants";
+import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
 import { useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
 interface UserProfile {
   username: string;

@@ -1,15 +1,13 @@
 
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Modal, Dimensions } from "react-native";
-import { authenticatedFetch } from "@/utils/api";
+import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import React, { useState, useEffect, useCallback } from "react";
 import { IconSymbol } from "@/components/IconSymbol";
 
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Conversation {

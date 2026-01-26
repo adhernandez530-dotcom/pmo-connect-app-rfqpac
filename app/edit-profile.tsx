@@ -5,12 +5,8 @@ import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { Toast } from "@/components/Toast";
-import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
-import { authenticatedGet, authenticatedPut, authenticatedDelete } from "@/utils/api";
-import { authenticatedFetch } from "@/utils/api";
-
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
+import { authenticatedGet, authenticatedPut, authenticatedDelete, authenticatedFetch, BACKEND_URL } from "@/utils/api";
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
   if (!source) return { uri: '' };

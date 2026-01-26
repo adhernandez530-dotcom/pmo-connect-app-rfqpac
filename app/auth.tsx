@@ -84,7 +84,18 @@ export default function AuthScreen() {
       console.log("Social auth successful - root layout will handle navigation");
     } catch (error: any) {
       console.error("Social auth error:", error);
-      const errorMessage = error.message || error.toString() || "Authentication failed";
+      let errorMessage = error.message || error.toString() || "Authentication failed";
+      
+      // Provide more helpful error messages
+      if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+        errorMessage = "Authentication service is currently unavailable. Please try again in a moment or use email sign in.";
+      } else if (errorMessage.includes("popup")) {
+        errorMessage = "Please allow popups in your browser to sign in with " + provider.charAt(0).toUpperCase() + provider.slice(1) + ".";
+      } else if (errorMessage.includes("cancelled")) {
+        // Don't show error for user cancellation
+        return;
+      }
+      
       Alert.alert("Authentication Error", errorMessage);
     } finally {
       setLoading(false);
@@ -109,6 +120,9 @@ export default function AuthScreen() {
   const dividerText = "or continue with";
   const googleButtonText = "Continue with Google";
   const appleButtonText = "Continue with Apple";
+  
+  // Log authentication state for debugging
+  console.log("AuthScreen: Rendering auth screen - mode:", mode, "loading:", loading);
 
   return (
     <KeyboardAvoidingView

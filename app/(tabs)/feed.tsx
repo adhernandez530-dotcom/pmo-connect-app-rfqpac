@@ -3,10 +3,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Dimensions } from "react-native";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import Constants from "expo-constants";
-import { authenticatedFetch } from "@/utils/api";
+import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
 
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
