@@ -25,6 +25,7 @@ import { registerPostsExtendedRoutes } from './routes/posts-extended.js';
 import { registerUserManagementRoutes } from './routes/user-management.js';
 import { registerAuthDebugRoutes } from './routes/auth-debug.js';
 import { registerOAuthConfigRoutes } from './routes/oauth-config.js';
+import { registerAuthEmailRoutes } from './routes/auth-email.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -35,7 +36,7 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
-// Configure social providers with Google and Apple OAuth
+// Configure social providers with Google, Apple, and GitHub OAuth
 // Note: Credentials can be provided via environment variables for custom OAuth
 // If not provided, the framework uses a proxy service for social authentication
 const authConfig: any = {
@@ -52,6 +53,12 @@ const authConfig: any = {
           clientSecret: process.env.APPLE_CLIENT_SECRET,
         }
       : undefined,
+    github: process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+      ? {
+          clientId: process.env.GITHUB_CLIENT_ID,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        }
+      : undefined,
   },
 };
 
@@ -62,6 +69,7 @@ app.logger.info(
   {
     googleConfigured: !!authConfig.socialProviders.google,
     appleConfigured: !!authConfig.socialProviders.apple,
+    githubConfigured: !!authConfig.socialProviders.github,
     message: 'OAuth providers configured. If credentials are not set, framework uses proxy service.',
   },
   'Authentication configured'
@@ -74,6 +82,7 @@ app.withStorage();
 // Register auth and OAuth debug routes first for early diagnostics
 registerAuthDebugRoutes(app);
 registerOAuthConfigRoutes(app);
+registerAuthEmailRoutes(app);
 registerInitRoutes(app);
 registerUserRoutes(app);
 registerSkillRoutes(app);

@@ -39,7 +39,12 @@ export function registerAuthDebugRoutes(app: App) {
           signin: 'POST /api/auth/sign-in/email',
           signout: 'POST /api/auth/sign-out',
           getSession: 'GET /api/auth/get-session',
-          socialSignin: 'POST /api/auth/sign-in/social',
+          socialSignin: 'POST /api/auth/sign-in/social (provider: google|apple|github)',
+          requestPasswordReset: 'POST /api/auth/request-password-reset',
+          resetPassword: 'POST /api/auth/reset-password',
+          sendVerificationEmail: 'POST /api/auth/send-verification-email',
+          verifyEmail: 'GET /api/auth/verify-email/:token',
+          emailStatus: 'GET /api/auth/email-status',
         },
       };
     }

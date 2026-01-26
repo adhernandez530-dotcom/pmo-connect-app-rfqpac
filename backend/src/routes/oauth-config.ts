@@ -19,6 +19,7 @@ export function registerOAuthConfigRoutes(app: App) {
 
       const googleConfigured = !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
       const appleConfigured = !!process.env.APPLE_CLIENT_ID && !!process.env.APPLE_CLIENT_SECRET;
+      const githubConfigured = !!process.env.GITHUB_CLIENT_ID && !!process.env.GITHUB_CLIENT_SECRET;
 
       return {
         status: 'ok',
@@ -34,6 +35,12 @@ export function registerOAuthConfigRoutes(app: App) {
             method: appleConfigured ? 'custom' : 'proxy',
             endpoint: '/api/auth/sign-in/social',
             params: { provider: 'apple' },
+          },
+          github: {
+            configured: githubConfigured,
+            method: githubConfigured ? 'custom' : 'proxy',
+            endpoint: '/api/auth/sign-in/social',
+            params: { provider: 'github' },
           },
         },
         note: 'If credentials are not configured, OAuth uses the framework proxy service for authentication.',
@@ -52,11 +59,12 @@ export function registerOAuthConfigRoutes(app: App) {
       app.logger.info('OAuth providers list requested');
 
       return {
-        available: ['google', 'apple'],
+        available: ['google', 'apple', 'github'],
         endpoint: 'POST /api/auth/sign-in/social',
         usage: {
           google: { method: 'POST', body: { provider: 'google' } },
           apple: { method: 'POST', body: { provider: 'apple' } },
+          github: { method: 'POST', body: { provider: 'github' } },
         },
         note: 'Social sign-in is available. Contact support if you experience issues.',
       };
