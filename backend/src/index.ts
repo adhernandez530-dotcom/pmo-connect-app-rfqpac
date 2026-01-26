@@ -31,8 +31,21 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
-// Enable authentication and storage
-app.withAuth();
+// Enable authentication with social providers and configuration
+app.withAuth({
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    },
+    apple: {
+      clientId: process.env.APPLE_CLIENT_ID,
+      clientSecret: process.env.APPLE_CLIENT_SECRET,
+    },
+  },
+});
+
+// Enable storage
 app.withStorage();
 
 // Register routes - IMPORTANT: Always use registration functions to avoid circular dependency issues
