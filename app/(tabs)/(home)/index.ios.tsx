@@ -164,6 +164,25 @@ export default function HomeScreen() {
     router.push('/(tabs)/friends');
   };
 
+  const handleCreatePost = (tag?: string) => {
+    console.log('HomeScreen: User tapped create post button', tag ? `with tag: ${tag}` : '');
+    if (tag) {
+      router.push(`/create-post?tag=${encodeURIComponent(tag)}`);
+    } else {
+      router.push('/create-post');
+    }
+  };
+
+  const handleServiceChipPress = (serviceName: string) => {
+    console.log('HomeScreen: User tapped service chip:', serviceName);
+    handleCreatePost(serviceName);
+  };
+
+  const handleKnowledgeChipPress = (topic: string) => {
+    console.log('HomeScreen: User tapped knowledge chip:', topic);
+    handleCreatePost(topic);
+  };
+
   const getInitials = (name: string) => {
     const nameParts = name.split(' ');
     const firstInitial = nameParts[0]?.[0] || '';
@@ -189,6 +208,7 @@ export default function HomeScreen() {
   const allText = 'All';
   const servicesCountText = services.length > 0 ? `${services.length}` : '0';
   const knowledgeCountText = knowledge.length > 0 ? `${knowledge.length}` : '0';
+  const postButtonText = 'Post +';
 
   return (
     <>
@@ -322,14 +342,28 @@ export default function HomeScreen() {
                   <Text style={styles.filterChipCount}>{servicesCountText}</Text>
                 </View>
                 {services.map((service, index) => (
-                  <View key={index} style={styles.filterChip}>
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.filterChip}
+                    onPress={() => handleServiceChipPress(service.serviceName)}
+                  >
                     <Text style={styles.filterChipText}>{service.serviceName}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
               {services.length === 0 && (
                 <Text style={styles.noServicesText}>No services added yet</Text>
               )}
+              
+              <TouchableOpacity style={styles.postButton} onPress={() => handleCreatePost()}>
+                <IconSymbol
+                  ios_icon_name="plus.circle.fill"
+                  android_material_icon_name="add-circle"
+                  size={20}
+                  color={colors.background}
+                />
+                <Text style={styles.postButtonText}>{postButtonText}</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -355,14 +389,28 @@ export default function HomeScreen() {
                   <Text style={styles.filterChipCount}>{knowledgeCountText}</Text>
                 </View>
                 {knowledge.map((item, index) => (
-                  <View key={index} style={styles.filterChip}>
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.filterChip}
+                    onPress={() => handleKnowledgeChipPress(item.topic)}
+                  >
                     <Text style={styles.filterChipText}>{item.topic}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
               {knowledge.length === 0 && (
                 <Text style={styles.noKnowledgeText}>No knowledge topics added yet</Text>
               )}
+              
+              <TouchableOpacity style={styles.postButton} onPress={() => handleCreatePost()}>
+                <IconSymbol
+                  ios_icon_name="plus.circle.fill"
+                  android_material_icon_name="add-circle"
+                  size={20}
+                  color={colors.background}
+                />
+                <Text style={styles.postButtonText}>{postButtonText}</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -543,6 +591,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginBottom: 12,
   },
   filterChip: {
     flexDirection: 'row',
@@ -568,6 +617,22 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     paddingVertical: 16,
+  },
+  postButton: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    marginTop: 8,
+  },
+  postButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.background,
   },
   knowledgeCard: {
     backgroundColor: colors.backgroundAlt,
