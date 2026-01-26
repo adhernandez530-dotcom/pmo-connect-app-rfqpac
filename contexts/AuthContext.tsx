@@ -9,6 +9,7 @@ interface User {
   email: string;
   name?: string;
   image?: string;
+  emailVerified?: boolean;
 }
 
 interface AuthContextType {
@@ -18,7 +19,8 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
-  signInWithGitHub: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
   signOut: () => Promise<void>;
   fetchUser: () => Promise<void>;
 }
@@ -170,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Fetch user session after successful sign up
       await fetchUser();
-      console.log("AuthContext: Sign up successful, user should be redirected to onboarding");
+      console.log("AuthContext: Sign up successful, user should be redirected to email verification");
     } catch (error: any) {
       console.error("AuthContext: Email sign up failed:", error);
       console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));
@@ -201,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithSocial = async (provider: "google" | "apple" | "github") => {
+  const signInWithSocial = async (provider: "google" | "apple") => {
     try {
       console.log("AuthContext: Signing in with", provider, "on platform:", Platform.OS);
       if (Platform.OS === "web") {
@@ -253,7 +255,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = () => signInWithSocial("google");
   const signInWithApple = () => signInWithSocial("apple");
-  const signInWithGitHub = () => signInWithSocial("github");
+
+  const forgotPassword = async (email: string) => {
+    try {
+      console.log("AuthContext: Requesting password reset for email:", email);
+      
+      // Import API helper
+      const { apiPost } = await import("@/utils/api");
+      
+      // Call backend to request password reset
+      await apiPost("/api/auth/request-password-reset", { email });
+      
+      console.log("AuthContext: Password reset email sent successfully");
+    } catch (error: any) {
+      console.error("AuthContext: Forgot password failed:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = "Failed to send password reset email. Please try again.";
+      
+      if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
+    }
+  };
+
+  const resendVerificationEmail = async () => {
+    try {
+      console.log("AuthContext: Resending verification email");
+      
+      // Import API helper
+      const { authenticatedPost } = await import("@/utils/api");
+      
+      // Call backend to resend verification email
+      // Note: This endpoint requires authentication
+      await authenticatedPost("/api/auth/send-verification-email", {});
+      
+      console.log("AuthContext: Verification email resent successfully");
+    } catch (error: any) {
+      console.error("AuthContext: Resend verification failed:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = "Failed to resend verification email. Please try again.";
+      
+      if (error?.message?.includes("Authentication session not found")) {
+        errorMessage = "Please sign in again to resend verification email.";
+      } else if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
+    }
+  };
 
   const signOut = async () => {
     try {
@@ -279,7 +337,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUpWithEmail,
         signInWithGoogle,
         signInWithApple,
-        signInWithGitHub,
+        forgotPassword,
+        resendVerificationEmail,
         signOut,
         fetchUser,
       }}

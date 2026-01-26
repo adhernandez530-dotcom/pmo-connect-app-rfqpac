@@ -43,6 +43,13 @@ function RootLayoutNav() {
 
     console.log("RootLayout: Checking onboarding status for user:", user.email);
 
+    // Check if email is verified
+    if (user.emailVerified === false) {
+      console.log("RootLayout: Email not verified, redirecting to /verify-email");
+      router.replace("/verify-email");
+      return;
+    }
+
     try {
       const { authenticatedGet } = await import("@/utils/api");
       
@@ -74,6 +81,7 @@ function RootLayoutNav() {
     }
 
     const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+    const inVerifyEmail = segments[0] === "verify-email";
     const inOnboarding = segments[0] === "onboarding";
     const inTabs = segments[0] === "(tabs)";
 
@@ -89,13 +97,20 @@ function RootLayoutNav() {
       return;
     }
 
-    // User is authenticated - now check onboarding
-    console.log("RootLayout: User authenticated:", user.email);
+    // User is authenticated - now check email verification and onboarding
+    console.log("RootLayout: User authenticated:", user.email, "emailVerified:", user.emailVerified);
 
-    // If user just signed in and is still on auth screen, check onboarding
+    // If user just signed in and is still on auth screen, check email verification and onboarding
     if (inAuthGroup) {
-      console.log("RootLayout: User on auth screen, checking onboarding status");
+      console.log("RootLayout: User on auth screen, checking email verification and onboarding status");
       checkOnboardingAndRedirect();
+      return;
+    }
+
+    // If user is trying to access tabs without email verification, redirect to verify-email
+    if (inTabs && user.emailVerified === false) {
+      console.log("RootLayout: User accessing tabs without verified email, redirecting to /verify-email");
+      router.replace("/verify-email");
       return;
     }
 
@@ -106,9 +121,9 @@ function RootLayoutNav() {
       return;
     }
 
-    // If user is not in onboarding and onboarding wasn't checked, check it
-    if (!inOnboarding && !onboardingChecked) {
-      console.log("RootLayout: Verifying onboarding status");
+    // If user is not in verify-email or onboarding and checks weren't done, do them
+    if (!inVerifyEmail && !inOnboarding && !onboardingChecked) {
+      console.log("RootLayout: Verifying email and onboarding status");
       checkOnboardingAndRedirect();
     }
   }, [user, loading, segments, onboardingChecked, router, checkOnboardingAndRedirect]);
@@ -150,7 +165,7 @@ function RootLayoutNav() {
     },
   };
   return (
-    <>
+    <React.Fragment>
       <StatusBar style="auto" animated />
         <ThemeProvider
           value={colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme}
@@ -172,6 +187,12 @@ function RootLayoutNav() {
               <Stack.Screen name="auth" options={{ headerShown: false }} />
               <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
               <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+              {/* Email verification screen */}
+              <Stack.Screen name="verify-email" options={{ headerShown: false }} />
+              {/* Email verification callback screen */}
+              <Stack.Screen name="verify-email-callback" options={{ headerShown: false }} />
+              {/* Password reset screen */}
+              <Stack.Screen name="reset-password" options={{ headerShown: false }} />
               {/* Onboarding screen */}
               <Stack.Screen name="onboarding" options={{ headerShown: false }} />
               {/* Main app with tabs */}
@@ -203,7 +224,7 @@ function RootLayoutNav() {
             </GestureHandlerRootView>
           </WidgetProvider>
         </ThemeProvider>
-    </>
+    </React.Fragment>
   );
 }
 

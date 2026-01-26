@@ -11,20 +11,32 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  Linking,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "forgot-password";
 
 export default function AuthScreen() {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, signInWithGitHub, loading: authLoading } =
-    useAuth();
+  const { 
+    signInWithEmail, 
+    signUpWithEmail, 
+    signInWithGoogle, 
+    signInWithApple, 
+    forgotPassword,
+    loading: authLoading 
+  } = useAuth();
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Validation states
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
 
   if (authLoading) {
     const loadingText = "Loading...";
@@ -36,6 +48,39 @@ export default function AuthScreen() {
     );
   }
 
+  const validatePassword = (pwd: string): boolean => {
+    if (pwd.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
+  const validateConfirmPassword = (pwd: string, confirmPwd: string): boolean => {
+    if (confirmPwd && pwd !== confirmPwd) {
+      setConfirmPasswordError("Passwords do not match");
+      return false;
+    }
+    setConfirmPasswordError("");
+    return true;
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (mode === "signup") {
+      validatePassword(text);
+      if (confirmPassword) {
+        validateConfirmPassword(text, confirmPassword);
+      }
+    }
+  };
+
+  const handleConfirmPasswordChange = (text: string) => {
+    setConfirmPassword(text);
+    validateConfirmPassword(password, text);
+  };
+
   const handleEmailAuth = async () => {
     console.log("User tapped email auth button - mode:", mode);
     
@@ -44,9 +89,20 @@ export default function AuthScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+    // Validate password
+    if (!validatePassword(password)) {
       return;
+    }
+
+    // Validate confirm password in signup mode
+    if (mode === "signup") {
+      if (!confirmPassword) {
+        Alert.alert("Error", "Please confirm your password");
+        return;
+      }
+      if (!validateConfirmPassword(password, confirmPassword)) {
+        return;
+      }
     }
 
     setLoading(true);
@@ -58,7 +114,7 @@ export default function AuthScreen() {
       } else {
         console.log("User signing up with email:", email, "name:", name || "(none)");
         await signUpWithEmail(email, password, name || undefined);
-        console.log("Sign up successful - root layout will redirect to onboarding");
+        console.log("Sign up successful - root layout will redirect to email verification");
       }
     } catch (error: any) {
       console.error("Authentication error:", error);
@@ -80,7 +136,47 @@ export default function AuthScreen() {
     }
   };
 
-  const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
+  const handleForgotPassword = async () => {
+    console.log("User tapped forgot password");
+    
+    if (!email) {
+      Alert.alert(
+        "Email Required", 
+        "Please enter your email address to reset your password.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await forgotPassword(email);
+      Alert.alert(
+        "Check Your Email",
+        "If an account exists for this email, we've sent a reset link.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              console.log("User acknowledged password reset email");
+              setMode("signin");
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error("Forgot password error:", error);
+      Alert.alert(
+        "Error",
+        "Failed to send password reset email. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSocialAuth = async (provider: "google" | "apple") => {
     console.log("User tapped social auth button - provider:", provider);
     setLoading(true);
     try {
@@ -89,8 +185,6 @@ export default function AuthScreen() {
         await signInWithGoogle();
       } else if (provider === "apple") {
         await signInWithApple();
-      } else if (provider === "github") {
-        await signInWithGitHub();
       }
       console.log("Social auth successful - root layout will handle navigation");
     } catch (error: any) {
@@ -119,23 +213,113 @@ export default function AuthScreen() {
     console.log("User tapped switch mode button - current mode:", mode);
     const newMode = mode === "signin" ? "signup" : "signin";
     setMode(newMode);
+    setPasswordError("");
+    setConfirmPasswordError("");
     console.log("Switched to mode:", newMode);
   };
 
-  const titleText = mode === "signin" ? "Welcome Back" : "Create Account";
+  const handleOpenTerms = () => {
+    console.log("User tapped Terms of Service link");
+    Linking.openURL("https://putmeon.app/terms");
+  };
+
+  const handleOpenPrivacy = () => {
+    console.log("User tapped Privacy Policy link");
+    Linking.openURL("https://putmeon.app/privacy");
+  };
+
+  const titleText = mode === "signin" 
+    ? "Welcome Back" 
+    : mode === "signup" 
+    ? "Create Account" 
+    : "Reset Password";
+  
   const subtitleText = mode === "signin" 
     ? "Sign in to continue" 
-    : "Sign up to get started";
-  const primaryButtonText = mode === "signin" ? "Sign In" : "Sign Up";
+    : mode === "signup"
+    ? "Sign up to get started"
+    : "Enter your email to receive a reset link";
+  
+  const primaryButtonText = mode === "signin" 
+    ? "Sign In" 
+    : mode === "signup"
+    ? "Sign Up"
+    : "Send Reset Link";
+  
   const switchModeText = mode === "signin"
     ? "Don't have an account? Sign Up"
     : "Already have an account? Sign In";
+  
   const dividerText = "or continue with";
   const googleButtonText = "Continue with Google";
   const appleButtonText = "Continue with Apple";
+  const forgotPasswordText = "Forgot password?";
+  const termsText = "By continuing, you agree to our ";
+  const termsLinkText = "Terms of Service";
+  const andText = " and ";
+  const privacyLinkText = "Privacy Policy";
+  
+  // Check if form is valid for signup
+  const isSignupValid = mode === "signup" && 
+    email && 
+    password && 
+    confirmPassword && 
+    password.length >= 6 && 
+    password === confirmPassword &&
+    !passwordError &&
+    !confirmPasswordError;
+
+  const isFormValid = mode === "signup" ? isSignupValid : (email && password);
   
   // Log authentication state for debugging
   console.log("AuthScreen: Rendering auth screen - mode:", mode, "loading:", loading);
+
+  if (mode === "forgot-password") {
+    return (
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.content}>
+            <Text style={styles.title}>{titleText}</Text>
+            <Text style={styles.subtitle}>{subtitleText}</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && styles.buttonDisabled]}
+              onPress={handleForgotPassword}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>{primaryButtonText}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.switchModeButton}
+              onPress={() => setMode("signin")}
+              disabled={loading}
+            >
+              <Text style={styles.switchModeText}>Back to Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -170,19 +354,52 @@ export default function AuthScreen() {
           />
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, passwordError ? styles.inputError : null]}
             placeholder="Password (min 6 characters)"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             secureTextEntry
             autoCapitalize="none"
             editable={!loading}
           />
+          {passwordError ? (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          ) : null}
+
+          {mode === "signup" && (
+            <React.Fragment>
+              <TextInput
+                style={[styles.input, confirmPasswordError ? styles.inputError : null]}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={handleConfirmPasswordChange}
+                secureTextEntry
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              {confirmPasswordError ? (
+                <Text style={styles.errorText}>{confirmPasswordError}</Text>
+              ) : null}
+            </React.Fragment>
+          )}
+
+          {mode === "signin" && (
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={() => setMode("forgot-password")}
+              disabled={loading}
+            >
+              <Text style={styles.forgotPasswordText}>{forgotPasswordText}</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.buttonDisabled]}
+            style={[
+              styles.primaryButton, 
+              (loading || (mode === "signup" && !isFormValid)) && styles.buttonDisabled
+            ]}
             onPress={handleEmailAuth}
-            disabled={loading}
+            disabled={loading || (mode === "signup" && !isFormValid)}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -224,6 +441,17 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
           )}
+
+          <View style={styles.termsContainer}>
+            <Text style={styles.termsText}>{termsText}</Text>
+            <TouchableOpacity onPress={handleOpenTerms}>
+              <Text style={styles.termsLink}>{termsLinkText}</Text>
+            </TouchableOpacity>
+            <Text style={styles.termsText}>{andText}</Text>
+            <TouchableOpacity onPress={handleOpenPrivacy}>
+              <Text style={styles.termsLink}>{privacyLinkText}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -279,6 +507,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 16,
     backgroundColor: "#fff",
+  },
+  inputError: {
+    borderColor: "#ff3b30",
+    marginBottom: 4,
+  },
+  errorText: {
+    color: "#ff3b30",
+    fontSize: 13,
+    marginBottom: 12,
+    marginTop: -8,
+    paddingHorizontal: 4,
+  },
+  forgotPasswordButton: {
+    alignSelf: "flex-end",
+    marginBottom: 8,
+    padding: 4,
+  },
+  forgotPasswordText: {
+    color: "#007AFF",
+    fontSize: 14,
+    fontWeight: "500",
   },
   primaryButton: {
     height: 50,
@@ -347,5 +596,24 @@ const styles = StyleSheet.create({
   },
   appleButtonText: {
     color: "#fff",
+  },
+  termsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
+  termsText: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+  },
+  termsLink: {
+    fontSize: 12,
+    color: "#007AFF",
+    fontWeight: "500",
+    textDecorationLine: "underline",
   },
 });
