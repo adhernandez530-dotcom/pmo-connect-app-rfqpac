@@ -1,8 +1,6 @@
 
 import Constants from "expo-constants";
-import { Platform } from "react-native";
-import * as SecureStore from "expo-secure-store";
-import { BEARER_TOKEN_KEY } from "@/lib/auth";
+import { authClient } from "@/lib/auth";
 
 /**
  * Backend URL is configured in app.json under expo.extra.backendUrl
@@ -18,21 +16,17 @@ export const isBackendConfigured = (): boolean => {
 };
 
 /**
- * Get bearer token from platform-specific storage
- * Web: localStorage
- * Native: SecureStore
+ * Get session token from Better Auth
+ * This uses the auth client's session management
  *
- * @returns Bearer token or null if not found
+ * @returns Session token or null if not found
  */
-export const getBearerToken = async (): Promise<string | null> => {
+export const getSessionToken = async (): Promise<string | null> => {
   try {
-    if (Platform.OS === "web") {
-      return localStorage.getItem(BEARER_TOKEN_KEY);
-    } else {
-      return await SecureStore.getItemAsync(BEARER_TOKEN_KEY);
-    }
+    const session = await authClient.getSession();
+    return session?.data?.session?.token || null;
   } catch (error) {
-    console.error("[API] Error retrieving bearer token:", error);
+    console.error("[API] Error retrieving session token:", error);
     return null;
   }
 };
@@ -63,6 +57,7 @@ export const apiCall = async <T = any>(
     const response = await fetch(url, {
       ...options,
       headers,
+      credentials: "include", // Important: Include cookies for Better Auth
     });
 
     if (!response.ok) {
@@ -151,21 +146,21 @@ export const apiDelete = async <T = any>(endpoint: string, data: any = {}): Prom
 
 /**
  * Authenticated API call helper
- * Automatically retrieves bearer token from storage and adds to Authorization header
+ * Uses Better Auth session cookies for authentication
  *
  * @param endpoint - API endpoint path
  * @param options - Fetch options (method, headers, body, etc.)
  * @returns Parsed JSON response
- * @throws Error if token not found or request fails
+ * @throws Error if session not found or request fails
  */
 export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> => {
-  const token = await getBearerToken();
+  const session = await authClient.getSession();
 
-  if (!token) {
-    throw new Error("Authentication token not found. Please sign in.");
+  if (!session?.data?.session) {
+    throw new Error("Authentication session not found. Please sign in.");
   }
 
   // Check if body is FormData to avoid setting Content-Type
@@ -177,8 +172,8 @@ export const authenticatedApiCall = async <T = any>(
       // Don't override Content-Type if it's FormData or already set
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...options?.headers,
-      Authorization: `Bearer ${token}`,
     },
+    credentials: "include", // Include cookies for Better Auth
   });
 };
 
@@ -266,16 +261,16 @@ export const authenticatedDelete = async <T = any>(endpoint: string, data: any =
  * @param url - Full URL or endpoint path
  * @param options - Fetch options (method, headers, body, etc.)
  * @returns Response object
- * @throws Error if token not found
+ * @throws Error if session not found
  */
 export const authenticatedFetch = async (
   url: string,
   options?: RequestInit
 ): Promise<Response> => {
-  const token = await getBearerToken();
+  const session = await authClient.getSession();
 
-  if (!token) {
-    throw new Error("Authentication token not found. Please sign in.");
+  if (!session?.data?.session) {
+    throw new Error("Authentication session not found. Please sign in.");
   }
 
   const fullUrl = url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
@@ -285,7 +280,7 @@ export const authenticatedFetch = async (
     ...options,
     headers: {
       ...options?.headers,
-      Authorization: `Bearer ${token}`,
     },
+    credentials: "include", // Include cookies for Better Auth
   });
 };

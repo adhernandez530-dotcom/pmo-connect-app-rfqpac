@@ -37,21 +37,24 @@ export default function SettingsScreen() {
             try {
               // Call backend logout endpoint
               console.log('SettingsScreen: Calling backend logout endpoint');
-              const response = await authenticatedFetch(`${BACKEND_URL}/api/account/logout`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({}),
-              });
-              
-              if (!response.ok) {
-                console.error('SettingsScreen: Backend logout failed with status:', response.status);
-                throw new Error('Failed to logout from backend');
+              try {
+                const response = await authenticatedFetch(`${BACKEND_URL}/api/account/logout`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({}),
+                });
+                
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log('SettingsScreen: Backend logout response:', data);
+                } else {
+                  console.warn('SettingsScreen: Backend logout returned non-OK status:', response.status);
+                }
+              } catch (backendError) {
+                console.warn('SettingsScreen: Backend logout failed, continuing with local logout:', backendError);
               }
-              
-              const data = await response.json();
-              console.log('SettingsScreen: Backend logout response:', data);
               
               // Sign out from auth context (clears local session)
               console.log('SettingsScreen: Clearing local auth session');

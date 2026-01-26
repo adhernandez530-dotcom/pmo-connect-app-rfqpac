@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { Platform } from "react-native";
@@ -16,7 +17,6 @@ export default function AuthCallbackScreen() {
   const handleCallback = () => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get("better_auth_token");
       const error = urlParams.get("error");
 
       if (error) {
@@ -26,20 +26,16 @@ export default function AuthCallbackScreen() {
         return;
       }
 
-      if (token) {
-        setStatus("success");
-        setMessage("Authentication successful! Closing...");
-        window.opener?.postMessage({ type: "oauth-success", token }, "*");
-        setTimeout(() => window.close(), 1000);
-      } else {
-        setStatus("error");
-        setMessage("No authentication token received");
-        window.opener?.postMessage({ type: "oauth-error", error: "No token" }, "*");
-      }
+      // Better Auth uses session cookies, so we just need to signal success
+      setStatus("success");
+      setMessage("Authentication successful! Closing...");
+      window.opener?.postMessage({ type: "oauth-success" }, "*");
+      setTimeout(() => window.close(), 1000);
     } catch (err) {
       setStatus("error");
       setMessage("Failed to process authentication");
       console.error("Auth callback error:", err);
+      window.opener?.postMessage({ type: "oauth-error", error: "Processing failed" }, "*");
     }
   };
 
