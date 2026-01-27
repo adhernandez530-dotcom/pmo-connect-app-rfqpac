@@ -556,9 +556,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   switchModeText: {
-    color: "#007AFF",
+    color: "#1a1a1a",
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   divider: {
     flexDirection: "row",
