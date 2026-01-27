@@ -21,14 +21,13 @@ export function registerMessagesExtendedRoutes(app: App) {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      const { filter, location, archived } = request.query as {
+      const { filter, location } = request.query as {
         filter?: 'friends' | 'put_me_on' | 'anyone';
         location?: 'nearby' | 'anywhere';
-        archived?: string;
       };
 
       app.logger.info(
-        { userId: session.user.id, filter: filter || 'anyone', archived: archived === 'true' },
+        { userId: session.user.id, filter: filter || 'anyone' },
         'Fetching conversations'
       );
 
@@ -37,20 +36,17 @@ export function registerMessagesExtendedRoutes(app: App) {
         const allMessages = await app.db.query.messages.findMany({
           where: or(
             eq(schema.messages.senderId, session.user.id),
-            eq(schema.messages.receiverId, session.user.id)
+            eq(schema.messages.recipientId, session.user.id)
           ),
         });
 
-        // Filter by archived status
-        const filteredMessages = allMessages.filter(
-          (m) => (archived === 'true' ? m.archived : !m.archived)
-        );
+        const filteredMessages = allMessages;
 
         // Extract unique user IDs
         const userIds = new Set<string>();
         filteredMessages.forEach((msg) => {
           if (msg.senderId !== session.user.id) userIds.add(msg.senderId);
-          if (msg.receiverId !== session.user.id) userIds.add(msg.receiverId);
+          if (msg.recipientId !== session.user.id) userIds.add(msg.recipientId);
         });
 
         if (userIds.size === 0) {
@@ -92,8 +88,8 @@ export function registerMessagesExtendedRoutes(app: App) {
         const conversations = userIdsArray.map((userId) => {
           const userMsgs = filteredMessages.filter(
             (m) =>
-              (m.senderId === session.user.id && m.receiverId === userId) ||
-              (m.senderId === userId && m.receiverId === session.user.id)
+              (m.senderId === session.user.id && m.recipientId === userId) ||
+              (m.senderId === userId && m.recipientId === session.user.id)
           );
 
           const lastMsg = userMsgs.sort(
@@ -101,7 +97,7 @@ export function registerMessagesExtendedRoutes(app: App) {
           )[0];
 
           const unreadCount = userMsgs.filter(
-            (m) => m.receiverId === session.user.id && !m.read
+            (m) => m.recipientId === session.user.id && !m.isRead
           ).length;
 
           const profile = profileMap.get(userId);
@@ -118,8 +114,6 @@ export function registerMessagesExtendedRoutes(app: App) {
             lastMessageTime: lastMsg?.createdAt,
             unread: unreadCount,
             mutualFriends: 0, // Would be computed from friendship data
-            archived: lastMsg?.archived || false,
-            muted: lastMsg?.muted || false,
           };
         });
 
@@ -140,7 +134,7 @@ export function registerMessagesExtendedRoutes(app: App) {
 
   /**
    * GET /api/messages/archived
-   * Get archived conversations
+   * Get archived conversations (not supported - returns empty)
    */
   app.fastify.get(
     '/api/messages/archived',
@@ -149,64 +143,7 @@ export function registerMessagesExtendedRoutes(app: App) {
       if (!session) return;
 
       app.logger.info({ userId: session.user.id }, 'Fetching archived conversations');
-
-      try {
-        const archivedMessages = await app.db.query.messages.findMany({
-          where: and(
-            or(
-              eq(schema.messages.senderId, session.user.id),
-              eq(schema.messages.receiverId, session.user.id)
-            ),
-            eq(schema.messages.archived, true)
-          ),
-        });
-
-        const userIds = new Set<string>();
-        archivedMessages.forEach((msg) => {
-          if (msg.senderId !== session.user.id) userIds.add(msg.senderId);
-          if (msg.receiverId !== session.user.id) userIds.add(msg.receiverId);
-        });
-
-        const profiles = await app.db.query.userProfiles.findMany();
-        const profileMap = new Map<string, (typeof profiles)[number]>(
-          profiles.map((p) => [p.id as string, p] as const)
-        );
-
-        const conversations = Array.from(userIds).map((userId) => {
-          const lastMsg = archivedMessages
-            .filter(
-              (m) =>
-                (m.senderId === session.user.id && m.receiverId === userId) ||
-                (m.senderId === userId && m.receiverId === session.user.id)
-            )
-            .sort(
-              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            )[0];
-
-          const profile = profileMap.get(userId);
-
-          return {
-            userId,
-            username: profile?.username,
-            fullName: profile?.fullName,
-            avatarUrl: profile?.avatarUrl,
-            lastMessage: lastMsg?.content,
-            lastMessageTime: lastMsg?.createdAt,
-          };
-        });
-
-        app.logger.info(
-          { userId: session.user.id, count: conversations.length },
-          'Archived conversations retrieved'
-        );
-        return conversations;
-      } catch (error) {
-        app.logger.error(
-          { err: error, userId: session.user.id },
-          'Failed to fetch archived conversations'
-        );
-        throw error;
-      }
+      return [];
     }
   );
 
@@ -227,10 +164,10 @@ export function registerMessagesExtendedRoutes(app: App) {
       try {
         await app.db
           .update(schema.messages)
-          .set({ read: true })
+          .set({ isRead: true })
           .where(
             and(
-              eq(schema.messages.receiverId, session.user.id),
+              eq(schema.messages.recipientId, session.user.id),
               eq(schema.messages.senderId, userId)
             )
           );
@@ -264,10 +201,10 @@ export function registerMessagesExtendedRoutes(app: App) {
       try {
         await app.db
           .update(schema.messages)
-          .set({ read: false })
+          .set({ isRead: false })
           .where(
             and(
-              eq(schema.messages.receiverId, session.user.id),
+              eq(schema.messages.recipientId, session.user.id),
               eq(schema.messages.senderId, userId)
             )
           );
@@ -286,7 +223,7 @@ export function registerMessagesExtendedRoutes(app: App) {
 
   /**
    * PUT /api/messages/:userId/archive
-   * Archive a conversation
+   * Archive a conversation (not supported)
    */
   app.fastify.put(
     '/api/messages/:userId/archive',
@@ -295,41 +232,14 @@ export function registerMessagesExtendedRoutes(app: App) {
       if (!session) return;
 
       const { userId } = request.params as { userId: string };
-
-      app.logger.info({ currentUserId: session.user.id, userId }, 'Archiving conversation');
-
-      try {
-        await app.db
-          .update(schema.messages)
-          .set({ archived: true })
-          .where(
-            or(
-              and(
-                eq(schema.messages.senderId, session.user.id),
-                eq(schema.messages.receiverId, userId)
-              ),
-              and(
-                eq(schema.messages.senderId, userId),
-                eq(schema.messages.receiverId, session.user.id)
-              )
-            )
-          );
-
-        app.logger.info({ currentUserId: session.user.id, userId }, 'Conversation archived');
-        return { success: true };
-      } catch (error) {
-        app.logger.error(
-          { err: error, userId: session.user.id, otherUserId: userId },
-          'Failed to archive conversation'
-        );
-        throw error;
-      }
+      app.logger.info({ currentUserId: session.user.id, userId }, 'Archive request received (not supported)');
+      return { success: true, message: 'Feature not supported' };
     }
   );
 
   /**
    * PUT /api/messages/:userId/unarchive
-   * Unarchive a conversation
+   * Unarchive a conversation (not supported)
    */
   app.fastify.put(
     '/api/messages/:userId/unarchive',
@@ -338,41 +248,14 @@ export function registerMessagesExtendedRoutes(app: App) {
       if (!session) return;
 
       const { userId } = request.params as { userId: string };
-
-      app.logger.info({ currentUserId: session.user.id, userId }, 'Unarchiving conversation');
-
-      try {
-        await app.db
-          .update(schema.messages)
-          .set({ archived: false })
-          .where(
-            or(
-              and(
-                eq(schema.messages.senderId, session.user.id),
-                eq(schema.messages.receiverId, userId)
-              ),
-              and(
-                eq(schema.messages.senderId, userId),
-                eq(schema.messages.receiverId, session.user.id)
-              )
-            )
-          );
-
-        app.logger.info({ currentUserId: session.user.id, userId }, 'Conversation unarchived');
-        return { success: true };
-      } catch (error) {
-        app.logger.error(
-          { err: error, userId: session.user.id, otherUserId: userId },
-          'Failed to unarchive conversation'
-        );
-        throw error;
-      }
+      app.logger.info({ currentUserId: session.user.id, userId }, 'Unarchive request received (not supported)');
+      return { success: true, message: 'Feature not supported' };
     }
   );
 
   /**
    * PUT /api/messages/:userId/mute
-   * Mute a conversation
+   * Mute a conversation (not supported)
    */
   app.fastify.put(
     '/api/messages/:userId/mute',
@@ -381,41 +264,14 @@ export function registerMessagesExtendedRoutes(app: App) {
       if (!session) return;
 
       const { userId } = request.params as { userId: string };
-
-      app.logger.info({ currentUserId: session.user.id, userId }, 'Muting conversation');
-
-      try {
-        await app.db
-          .update(schema.messages)
-          .set({ muted: true })
-          .where(
-            or(
-              and(
-                eq(schema.messages.senderId, session.user.id),
-                eq(schema.messages.receiverId, userId)
-              ),
-              and(
-                eq(schema.messages.senderId, userId),
-                eq(schema.messages.receiverId, session.user.id)
-              )
-            )
-          );
-
-        app.logger.info({ currentUserId: session.user.id, userId }, 'Conversation muted');
-        return { success: true };
-      } catch (error) {
-        app.logger.error(
-          { err: error, userId: session.user.id, otherUserId: userId },
-          'Failed to mute conversation'
-        );
-        throw error;
-      }
+      app.logger.info({ currentUserId: session.user.id, userId }, 'Mute request received (not supported)');
+      return { success: true, message: 'Feature not supported' };
     }
   );
 
   /**
    * PUT /api/messages/:userId/unmute
-   * Unmute a conversation
+   * Unmute a conversation (not supported)
    */
   app.fastify.put(
     '/api/messages/:userId/unmute',
@@ -424,35 +280,8 @@ export function registerMessagesExtendedRoutes(app: App) {
       if (!session) return;
 
       const { userId } = request.params as { userId: string };
-
-      app.logger.info({ currentUserId: session.user.id, userId }, 'Unmuting conversation');
-
-      try {
-        await app.db
-          .update(schema.messages)
-          .set({ muted: false })
-          .where(
-            or(
-              and(
-                eq(schema.messages.senderId, session.user.id),
-                eq(schema.messages.receiverId, userId)
-              ),
-              and(
-                eq(schema.messages.senderId, userId),
-                eq(schema.messages.receiverId, session.user.id)
-              )
-            )
-          );
-
-        app.logger.info({ currentUserId: session.user.id, userId }, 'Conversation unmuted');
-        return { success: true };
-      } catch (error) {
-        app.logger.error(
-          { err: error, userId: session.user.id, otherUserId: userId },
-          'Failed to unmute conversation'
-        );
-        throw error;
-      }
+      app.logger.info({ currentUserId: session.user.id, userId }, 'Unmute request received (not supported)');
+      return { success: true, message: 'Feature not supported' };
     }
   );
 
@@ -475,11 +304,11 @@ export function registerMessagesExtendedRoutes(app: App) {
           or(
             and(
               eq(schema.messages.senderId, session.user.id),
-              eq(schema.messages.receiverId, userId)
+              eq(schema.messages.recipientId, userId)
             ),
             and(
               eq(schema.messages.senderId, userId),
-              eq(schema.messages.receiverId, session.user.id)
+              eq(schema.messages.recipientId, session.user.id)
             )
           )
         );

@@ -1,0 +1,3 @@
+-- This migration is not applied - it contained operations on tables
+-- that don't exist in the current schema. The real migration
+-- 20260127195654_youthful_bedlam.sql handles the schema correctly.

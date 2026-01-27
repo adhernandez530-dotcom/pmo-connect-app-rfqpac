@@ -6,7 +6,6 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
-import { user } from '../db/auth-schema.js';
 import * as schema from '../db/schema.js';
 
 export function registerAccountRoutes(app: App) {
@@ -54,7 +53,7 @@ export function registerAccountRoutes(app: App) {
       try {
         // Check if account is already deactivated
         const currentUser = await app.db.query.user.findFirst({
-          where: eq(user.id, session.user.id),
+          where: eq(schema.user.id, session.user.id),
         });
 
         if (!currentUser) {
@@ -70,12 +69,12 @@ export function registerAccountRoutes(app: App) {
         // Mark account as deactivated
         const now = new Date();
         await app.db
-          .update(user)
+          .update(schema.user)
           .set({
             deactivatedAt: now,
             updatedAt: now,
           })
-          .where(eq(user.id, session.user.id));
+          .where(eq(schema.user.id, session.user.id));
 
         app.logger.info(
           { userId: session.user.id, deactivatedAt: now },
@@ -111,7 +110,7 @@ export function registerAccountRoutes(app: App) {
 
       try {
         const currentUser = await app.db.query.user.findFirst({
-          where: eq(user.id, session.user.id),
+          where: eq(schema.user.id, session.user.id),
         });
 
         if (!currentUser) {
@@ -285,7 +284,7 @@ export function registerAccountRoutes(app: App) {
 
         // Check if account is already deactivated
         const currentUser = await app.db.query.user.findFirst({
-          where: eq(user.id, session.user.id),
+          where: eq(schema.user.id, session.user.id),
         });
 
         if (!currentUser) {
@@ -301,12 +300,12 @@ export function registerAccountRoutes(app: App) {
         // Mark account as deactivated
         const now = new Date();
         await app.db
-          .update(user)
+          .update(schema.user)
           .set({
             deactivatedAt: now,
             updatedAt: now,
           })
-          .where(eq(user.id, session.user.id));
+          .where(eq(schema.user.id, session.user.id));
 
         // Delete the used verification code
         await app.db

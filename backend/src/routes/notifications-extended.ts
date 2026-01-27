@@ -28,18 +28,18 @@ export function registerNotificationsExtendedRoutes(app: App) {
           .select({
             id: schema.notifications.id,
             type: schema.notifications.type,
-            content: schema.notifications.content,
-            read: schema.notifications.read,
-            relatedUserId: schema.notifications.relatedUserId,
-            relatedUsername: schema.userProfiles.username,
-            relatedUserFullName: schema.userProfiles.fullName,
-            relatedUserAvatar: schema.userProfiles.avatarUrl,
+            title: schema.notifications.title,
+            message: schema.notifications.message,
+            isRead: schema.notifications.isRead,
+            actorUsername: schema.userProfiles.username,
+            actorFullName: schema.userProfiles.fullName,
+            actorAvatar: schema.userProfiles.avatarUrl,
             createdAt: schema.notifications.createdAt,
           })
           .from(schema.notifications)
           .leftJoin(
             schema.userProfiles,
-            eq(schema.notifications.relatedUserId, schema.userProfiles.id)
+            eq(schema.notifications.actorId, schema.userProfiles.id)
           )
           .where(eq(schema.notifications.userId, session.user.id))
           .orderBy(desc(schema.notifications.createdAt));
@@ -90,7 +90,7 @@ export function registerNotificationsExtendedRoutes(app: App) {
 
         await app.db
           .update(schema.notifications)
-          .set({ read: true })
+          .set({ isRead: true })
           .where(eq(schema.notifications.id, id));
 
         app.logger.info({ userId: session.user.id, notificationId: id }, 'Notification marked as read');

@@ -194,7 +194,7 @@ export function registerGroupChatRoutes(app: App) {
             createdBy: session.user.id,
             name,
             description,
-            isGroup: true,
+            isGroupChat: true,
           })
           .returning();
 

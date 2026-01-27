@@ -1,0 +1,2 @@
+-- This migration is disabled - it contained conflicting schema operations
+-- Use only migrations recorded in the journal

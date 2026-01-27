@@ -30,11 +30,11 @@ export function registerMessagesRoutes(app: App) {
           where: or(
             and(
               eq(schema.messages.senderId, session.user.id),
-              eq(schema.messages.receiverId, userId)
+              eq(schema.messages.recipientId, userId)
             ),
             and(
               eq(schema.messages.senderId, userId),
-              eq(schema.messages.receiverId, session.user.id)
+              eq(schema.messages.recipientId, session.user.id)
             )
           ),
         });
@@ -62,13 +62,13 @@ export function registerMessagesRoutes(app: App) {
     const session = await requireAuth(request, reply);
     if (!session) return;
 
-    const { receiverId, content } = request.body as {
-      receiverId: string;
+    const { recipientId, content } = request.body as {
+      recipientId: string;
       content: string;
     };
 
     app.logger.info(
-      { senderId: session.user.id, receiverId },
+      { senderId: session.user.id, recipientId },
       'Sending message'
     );
 
@@ -78,18 +78,18 @@ export function registerMessagesRoutes(app: App) {
         return reply.status(400).send({ error: 'Message content is required' });
       }
 
-      if (receiverId === session.user.id) {
+      if (recipientId === session.user.id) {
         app.logger.warn({ senderId: session.user.id }, 'Cannot send message to self');
         return reply.status(400).send({ error: 'Cannot send message to yourself' });
       }
 
       // Check if receiver exists
       const receiver = await app.db.query.userProfiles.findFirst({
-        where: eq(schema.userProfiles.id, receiverId),
+        where: eq(schema.userProfiles.id, recipientId),
       });
 
       if (!receiver) {
-        app.logger.warn({ receiverId }, 'Receiver not found');
+        app.logger.warn({ recipientId }, 'Receiver not found');
         return reply.status(404).send({ error: 'User not found' });
       }
 
@@ -97,19 +97,19 @@ export function registerMessagesRoutes(app: App) {
         .insert(schema.messages)
         .values({
           senderId: session.user.id,
-          receiverId,
+          recipientId,
           content,
         })
         .returning();
 
       app.logger.info(
-        { senderId: session.user.id, receiverId, messageId: message[0].id },
+        { senderId: session.user.id, recipientId, messageId: message[0].id },
         'Message sent successfully'
       );
       return message[0];
     } catch (error) {
       app.logger.error(
-        { err: error, senderId: session.user.id, receiverId, content },
+        { err: error, senderId: session.user.id, recipientId, content },
         'Failed to send message'
       );
       throw error;

@@ -288,7 +288,7 @@ export function registerProfileRoutes(app: App) {
         .insert(schema.userKnowledge)
         .values({
           userId: session.user.id,
-          topic,
+          knowledgeArea: topic,
         })
         .returning();
 

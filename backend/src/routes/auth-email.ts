@@ -7,7 +7,6 @@ import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
-import { user } from '../db/auth-schema.js';
 
 export function registerAuthEmailRoutes(app: App) {
   const requireAuth = app.requireAuth();
@@ -37,7 +36,7 @@ export function registerAuthEmailRoutes(app: App) {
 
         // Verify user exists (but don't reveal in response)
         const userExists = await app.db.query.user.findFirst({
-          where: eq(user.email, email),
+          where: eq(schema.user.email, email),
         });
 
         if (!userExists) {

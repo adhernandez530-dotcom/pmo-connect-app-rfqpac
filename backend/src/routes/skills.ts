@@ -41,13 +41,13 @@ export function registerSkillRoutes(app: App) {
     const session = await requireAuth(request, reply);
     if (!session) return;
 
-    const { skillName, skillLevel } = request.body as {
+    const { skillName, proficiencyLevel } = request.body as {
       skillName: string;
-      skillLevel: string;
+      proficiencyLevel: string;
     };
 
     app.logger.info(
-      { userId: session.user.id, skillName, skillLevel },
+      { userId: session.user.id, skillName, proficiencyLevel },
       'Adding skill'
     );
 
@@ -63,9 +63,9 @@ export function registerSkillRoutes(app: App) {
       }
 
       // Validate skill level
-      if (!['beginner', 'intermediate', 'expert'].includes(skillLevel)) {
+      if (!['beginner', 'intermediate', 'expert'].includes(proficiencyLevel)) {
         app.logger.warn(
-          { userId: session.user.id, skillLevel },
+          { userId: session.user.id, proficiencyLevel },
           'Invalid skill level provided'
         );
         return reply.status(400).send({
@@ -78,7 +78,7 @@ export function registerSkillRoutes(app: App) {
         .values({
           userId: session.user.id,
           skillName,
-          skillLevel,
+          proficiencyLevel,
         })
         .returning();
 
@@ -89,7 +89,7 @@ export function registerSkillRoutes(app: App) {
       return skill[0];
     } catch (error) {
       app.logger.error(
-        { err: error, userId: session.user.id, skillName, skillLevel },
+        { err: error, userId: session.user.id, skillName, proficiencyLevel },
         'Failed to add skill'
       );
       throw error;

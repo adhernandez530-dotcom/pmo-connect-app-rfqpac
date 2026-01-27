@@ -38,9 +38,9 @@ export function registerOnboardingRoutes(app: App) {
           where: eq(schema.userProfiles.id, session.user.id),
         });
 
-        if (existingProfile && existingProfile.onboardingCompleted) {
-          app.logger.warn({ userId: session.user.id }, 'Onboarding already completed');
-          return reply.status(400).send({ error: 'Onboarding already completed' });
+        if (existingProfile) {
+          app.logger.warn({ userId: session.user.id }, 'Profile already exists');
+          // Allow updates to existing profile
         }
 
         // Check if username is available (if different from existing)
@@ -67,8 +67,6 @@ export function registerOnboardingRoutes(app: App) {
               location: location || existingProfile.location,
               bio: bio || existingProfile.bio,
               phoneNumber: phoneNumber || existingProfile.phoneNumber,
-              allowContacts: allowContacts !== undefined ? allowContacts : existingProfile.allowContacts,
-              onboardingCompleted: true,
               updatedAt: new Date(),
             })
             .where(eq(schema.userProfiles.id, session.user.id))
@@ -84,8 +82,6 @@ export function registerOnboardingRoutes(app: App) {
               location: location || null,
               bio: bio || null,
               phoneNumber: phoneNumber || null,
-              allowContacts: allowContacts || false,
-              onboardingCompleted: true,
             })
             .returning();
         }

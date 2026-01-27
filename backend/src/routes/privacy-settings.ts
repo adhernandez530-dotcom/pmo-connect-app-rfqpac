@@ -8,22 +8,11 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 
-// Valid values for privacy settings
-const VALID_PROFILE_VISIBILITY = ['public', 'private'];
-const VALID_MESSAGE_PERMISSION = ['anyone', 'mutual_friends', 'friends_only'];
-const VALID_SERVICES_VISIBILITY = ['everyone', 'friends_only', 'only_me'];
-const VALID_FRIENDS_LIST_VISIBILITY = ['everyone', 'friends_only', 'only_me'];
-const VALID_TAG_PERMISSION = ['anyone', 'friends_only', 'no_one'];
-const VALID_COMMENT_PERMISSION = ['anyone', 'friends_only', 'no_one'];
-
 // Default privacy settings
 const DEFAULT_PRIVACY_SETTINGS = {
-  profileVisibility: 'public',
-  messagePermission: 'anyone',
-  servicesVisibility: 'everyone',
-  friendsListVisibility: 'everyone',
-  tagPermission: 'anyone',
-  commentPermission: 'anyone',
+  isProfilePublic: true,
+  allowDirectMessages: true,
+  allowFriendRequests: true,
 };
 
 export function registerPrivacySettingsRoutes(app: App) {
@@ -58,12 +47,9 @@ export function registerPrivacySettingsRoutes(app: App) {
             .insert(schema.userPrivacySettings)
             .values({
               userId: session.user.id,
-              profileVisibility: DEFAULT_PRIVACY_SETTINGS.profileVisibility,
-              messagePermission: DEFAULT_PRIVACY_SETTINGS.messagePermission,
-              servicesVisibility: DEFAULT_PRIVACY_SETTINGS.servicesVisibility,
-              friendsListVisibility: DEFAULT_PRIVACY_SETTINGS.friendsListVisibility,
-              tagPermission: DEFAULT_PRIVACY_SETTINGS.tagPermission,
-              commentPermission: DEFAULT_PRIVACY_SETTINGS.commentPermission,
+              isProfilePublic: DEFAULT_PRIVACY_SETTINGS.isProfilePublic,
+              allowDirectMessages: DEFAULT_PRIVACY_SETTINGS.allowDirectMessages,
+              allowFriendRequests: DEFAULT_PRIVACY_SETTINGS.allowFriendRequests,
             })
             .returning();
 
@@ -73,12 +59,9 @@ export function registerPrivacySettingsRoutes(app: App) {
         app.logger.info({ userId: session.user.id }, 'Privacy settings retrieved');
 
         return {
-          profileVisibility: settings.profileVisibility,
-          messagePermission: settings.messagePermission,
-          servicesVisibility: settings.servicesVisibility,
-          friendsListVisibility: settings.friendsListVisibility,
-          tagPermission: settings.tagPermission,
-          commentPermission: settings.commentPermission,
+          isProfilePublic: settings.isProfilePublic,
+          allowDirectMessages: settings.allowDirectMessages,
+          allowFriendRequests: settings.allowFriendRequests,
         };
       } catch (error) {
         app.logger.error(
@@ -101,174 +84,46 @@ export function registerPrivacySettingsRoutes(app: App) {
       if (!session) return;
 
       const {
-        profileVisibility,
-        messagePermission,
-        servicesVisibility,
-        friendsListVisibility,
-        tagPermission,
-        commentPermission,
+        isProfilePublic,
+        allowDirectMessages,
+        allowFriendRequests,
       } = request.body as {
-        profileVisibility?: string;
-        messagePermission?: string;
-        servicesVisibility?: string;
-        friendsListVisibility?: string;
-        tagPermission?: string;
-        commentPermission?: string;
+        isProfilePublic?: boolean;
+        allowDirectMessages?: boolean;
+        allowFriendRequests?: boolean;
       };
 
       app.logger.info({ userId: session.user.id }, 'Updating privacy settings');
 
       try {
-        // Validate input values
-        if (
-          profileVisibility &&
-          !VALID_PROFILE_VISIBILITY.includes(profileVisibility)
-        ) {
-          app.logger.warn(
-            { userId: session.user.id, value: profileVisibility },
-            'Invalid profileVisibility value'
-          );
-          return reply.status(400).send({
-            error: `Invalid profileVisibility. Must be one of: ${VALID_PROFILE_VISIBILITY.join(', ')}`,
-          });
-        }
-
-        if (
-          messagePermission &&
-          !VALID_MESSAGE_PERMISSION.includes(messagePermission)
-        ) {
-          app.logger.warn(
-            { userId: session.user.id, value: messagePermission },
-            'Invalid messagePermission value'
-          );
-          return reply.status(400).send({
-            error: `Invalid messagePermission. Must be one of: ${VALID_MESSAGE_PERMISSION.join(', ')}`,
-          });
-        }
-
-        if (
-          servicesVisibility &&
-          !VALID_SERVICES_VISIBILITY.includes(servicesVisibility)
-        ) {
-          app.logger.warn(
-            { userId: session.user.id, value: servicesVisibility },
-            'Invalid servicesVisibility value'
-          );
-          return reply.status(400).send({
-            error: `Invalid servicesVisibility. Must be one of: ${VALID_SERVICES_VISIBILITY.join(', ')}`,
-          });
-        }
-
-        if (
-          friendsListVisibility &&
-          !VALID_FRIENDS_LIST_VISIBILITY.includes(friendsListVisibility)
-        ) {
-          app.logger.warn(
-            { userId: session.user.id, value: friendsListVisibility },
-            'Invalid friendsListVisibility value'
-          );
-          return reply.status(400).send({
-            error: `Invalid friendsListVisibility. Must be one of: ${VALID_FRIENDS_LIST_VISIBILITY.join(', ')}`,
-          });
-        }
-
-        if (tagPermission && !VALID_TAG_PERMISSION.includes(tagPermission)) {
-          app.logger.warn(
-            { userId: session.user.id, value: tagPermission },
-            'Invalid tagPermission value'
-          );
-          return reply.status(400).send({
-            error: `Invalid tagPermission. Must be one of: ${VALID_TAG_PERMISSION.join(', ')}`,
-          });
-        }
-
-        if (
-          commentPermission &&
-          !VALID_COMMENT_PERMISSION.includes(commentPermission)
-        ) {
-          app.logger.warn(
-            { userId: session.user.id, value: commentPermission },
-            'Invalid commentPermission value'
-          );
-          return reply.status(400).send({
-            error: `Invalid commentPermission. Must be one of: ${VALID_COMMENT_PERMISSION.join(', ')}`,
-          });
-        }
-
-        // Try to find existing settings
-        let settings = await app.db.query.userPrivacySettings.findFirst({
+        // Get or create existing settings
+        const existing = await app.db.query.userPrivacySettings.findFirst({
           where: eq(schema.userPrivacySettings.userId, session.user.id),
         });
 
-        // Build update object with only provided values
-        const updateData: any = {};
-        if (profileVisibility !== undefined)
-          updateData.profileVisibility = profileVisibility;
-        if (messagePermission !== undefined)
-          updateData.messagePermission = messagePermission;
-        if (servicesVisibility !== undefined)
-          updateData.servicesVisibility = servicesVisibility;
-        if (friendsListVisibility !== undefined)
-          updateData.friendsListVisibility = friendsListVisibility;
-        if (tagPermission !== undefined) updateData.tagPermission = tagPermission;
-        if (commentPermission !== undefined)
-          updateData.commentPermission = commentPermission;
-        updateData.updatedAt = new Date();
-
-        if (!settings) {
-          // Create new settings with provided values and defaults for missing ones
-          app.logger.info(
-            { userId: session.user.id },
-            'Creating privacy settings with provided values'
-          );
-
-          const created = await app.db
-            .insert(schema.userPrivacySettings)
-            .values({
-              userId: session.user.id,
-              profileVisibility:
-                profileVisibility || DEFAULT_PRIVACY_SETTINGS.profileVisibility,
-              messagePermission:
-                messagePermission || DEFAULT_PRIVACY_SETTINGS.messagePermission,
-              servicesVisibility:
-                servicesVisibility || DEFAULT_PRIVACY_SETTINGS.servicesVisibility,
-              friendsListVisibility:
-                friendsListVisibility ||
-                DEFAULT_PRIVACY_SETTINGS.friendsListVisibility,
-              tagPermission:
-                tagPermission || DEFAULT_PRIVACY_SETTINGS.tagPermission,
-              commentPermission:
-                commentPermission || DEFAULT_PRIVACY_SETTINGS.commentPermission,
-            })
-            .returning();
-
-          settings = created[0];
-        } else {
-          // Update existing settings
-          const updated = await app.db
-            .update(schema.userPrivacySettings)
-            .set(updateData)
-            .where(eq(schema.userPrivacySettings.userId, session.user.id))
-            .returning();
-
-          settings = updated[0];
+        if (!existing) {
+          app.logger.warn({ userId: session.user.id }, 'Privacy settings not found');
+          return reply.status(404).send({ error: 'Privacy settings not found' });
         }
 
-        app.logger.info(
-          { userId: session.user.id },
-          'Privacy settings updated successfully'
-        );
+        // Update privacy settings
+        const updated = await app.db
+          .update(schema.userPrivacySettings)
+          .set({
+            isProfilePublic: isProfilePublic !== undefined ? isProfilePublic : existing.isProfilePublic,
+            allowDirectMessages: allowDirectMessages !== undefined ? allowDirectMessages : existing.allowDirectMessages,
+            allowFriendRequests: allowFriendRequests !== undefined ? allowFriendRequests : existing.allowFriendRequests,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.userPrivacySettings.userId, session.user.id))
+          .returning();
+
+        app.logger.info({ userId: session.user.id }, 'Privacy settings updated');
 
         return {
-          success: true,
-          settings: {
-            profileVisibility: settings.profileVisibility,
-            messagePermission: settings.messagePermission,
-            servicesVisibility: settings.servicesVisibility,
-            friendsListVisibility: settings.friendsListVisibility,
-            tagPermission: settings.tagPermission,
-            commentPermission: settings.commentPermission,
-          },
+          isProfilePublic: updated[0].isProfilePublic,
+          allowDirectMessages: updated[0].allowDirectMessages,
+          allowFriendRequests: updated[0].allowFriendRequests,
         };
       } catch (error) {
         app.logger.error(

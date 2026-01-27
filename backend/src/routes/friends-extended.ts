@@ -124,7 +124,7 @@ export function registerFriendsExtendedRoutes(app: App) {
             username: schema.userProfiles.username,
             fullName: schema.userProfiles.fullName,
             avatarUrl: schema.userProfiles.avatarUrl,
-            source: schema.contactSuggestions.source,
+            reason: schema.contactSuggestions.reason,
           })
           .from(schema.contactSuggestions)
           .leftJoin(

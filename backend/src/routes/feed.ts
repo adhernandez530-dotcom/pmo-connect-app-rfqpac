@@ -5,7 +5,7 @@
 
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq, inArray, desc, and, or } from 'drizzle-orm';
+import { eq, inArray, desc, and, or, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 
 export function registerFeedRoutes(app: App) {
@@ -51,16 +51,15 @@ export function registerFeedRoutes(app: App) {
           content: schema.posts.content,
           mediaUrl: schema.posts.mediaUrl,
           mediaType: schema.posts.mediaType,
-          likesCount: schema.posts.likesCount,
-          commentsCount: schema.posts.commentsCount,
-          repostsCount: schema.posts.repostsCount,
-          repostOfId: schema.posts.repostOfId,
+          originalPostId: schema.posts.originalPostId,
+          isDraft: schema.posts.isDraft,
+          isRepost: schema.posts.isRepost,
           createdAt: schema.posts.createdAt,
         })
         .from(schema.posts)
         .leftJoin(schema.userProfiles, eq(schema.posts.userId, schema.userProfiles.id))
         .where(inArray(schema.posts.userId, friendIds))
-        .orderBy(sort === 'popularity' ? desc(schema.posts.likesCount) : desc(schema.posts.createdAt));
+        .orderBy(desc(schema.posts.createdAt));
 
       // Enrich with user engagement
       const enrichedPosts = await Promise.all(
@@ -72,9 +71,9 @@ export function registerFeedRoutes(app: App) {
             ),
           });
 
-          const repostOf = post.repostOfId
+          const repostOf = post.originalPostId
             ? await app.db.query.posts.findFirst({
-                where: eq(schema.posts.id, post.repostOfId),
+                where: eq(schema.posts.id, post.originalPostId),
               })
             : null;
 
@@ -136,15 +135,20 @@ export function registerFeedRoutes(app: App) {
         userId: session.user.id,
       });
 
-      // Increment likes count
-      const updated = await app.db
-        .update(schema.posts)
-        .set({ likesCount: post.likesCount + 1 })
-        .where(eq(schema.posts.id, id))
-        .returning();
+      // Record the like
+      await app.db.insert(schema.postLikes).values({
+        postId: id,
+        userId: session.user.id,
+      });
+
+      // Count total likes
+      const likes = await app.db
+        .select({ count: sql`count(*)` })
+        .from(schema.postLikes)
+        .where(eq(schema.postLikes.postId, id));
 
       app.logger.info({ userId: session.user.id, postId: id }, 'Post liked');
-      return { success: true, likesCount: updated[0].likesCount };
+      return { success: true, likesCount: parseInt(likes[0].count as string) || 0 };
     } catch (error) {
       app.logger.error({ err: error, userId: session.user.id, postId: id }, 'Failed to like post');
       throw error;
@@ -189,15 +193,14 @@ export function registerFeedRoutes(app: App) {
       // Remove like
       await app.db.delete(schema.postLikes).where(eq(schema.postLikes.id, like.id));
 
-      // Decrement likes count
-      const updated = await app.db
-        .update(schema.posts)
-        .set({ likesCount: Math.max(0, post.likesCount - 1) })
-        .where(eq(schema.posts.id, id))
-        .returning();
+      // Count total likes
+      const likes = await app.db
+        .select({ count: sql`count(*)` })
+        .from(schema.postLikes)
+        .where(eq(schema.postLikes.postId, id));
 
       app.logger.info({ userId: session.user.id, postId: id }, 'Post unliked');
-      return { success: true, likesCount: updated[0].likesCount };
+      return { success: true, likesCount: parseInt(likes[0].count as string) || 0 };
     } catch (error) {
       app.logger.error({ err: error, userId: session.user.id, postId: id }, 'Failed to unlike post');
       throw error;
@@ -233,15 +236,10 @@ export function registerFeedRoutes(app: App) {
         .values({
           userId: session.user.id,
           content: content || null,
-          repostOfId: id,
+          isRepost: true,
+          originalPostId: id,
         })
         .returning();
-
-      // Increment reposts count on original
-      await app.db
-        .update(schema.posts)
-        .set({ repostsCount: post.repostsCount + 1 })
-        .where(eq(schema.posts.id, id));
 
       app.logger.info({ userId: session.user.id, repostId: repost[0].id }, 'Repost created');
       return repost[0];
@@ -330,11 +328,7 @@ export function registerFeedRoutes(app: App) {
           })
           .returning();
 
-        // Increment comments count
-        await app.db
-          .update(schema.posts)
-          .set({ commentsCount: post.commentsCount + 1 })
-          .where(eq(schema.posts.id, id));
+        // Comments count is computed, no need to update
 
         // Get user profile for response
         const profile = await app.db.query.userProfiles.findFirst({

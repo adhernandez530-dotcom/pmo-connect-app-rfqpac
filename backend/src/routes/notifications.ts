@@ -28,16 +28,16 @@ export function registerNotificationsRoutes(app: App) {
           .select({
             id: schema.notifications.id,
             type: schema.notifications.type,
-            content: schema.notifications.content,
-            read: schema.notifications.read,
-            relatedUserId: schema.notifications.relatedUserId,
-            relatedUsername: schema.userProfiles.username,
+            title: schema.notifications.title,
+            message: schema.notifications.message,
+            isRead: schema.notifications.isRead,
+            actorUsername: schema.userProfiles.username,
             createdAt: schema.notifications.createdAt,
           })
           .from(schema.notifications)
           .leftJoin(
             schema.userProfiles,
-            eq(schema.notifications.relatedUserId, schema.userProfiles.id)
+            eq(schema.notifications.actorId, schema.userProfiles.id)
           )
           .where(eq(schema.notifications.userId, session.user.id))
           .orderBy(desc(schema.notifications.createdAt));
@@ -73,7 +73,7 @@ export function registerNotificationsRoutes(app: App) {
         const unreadNotifications = await app.db.query.notifications.findMany({
           where: and(
             eq(schema.notifications.userId, session.user.id),
-            eq(schema.notifications.read, false)
+            eq(schema.notifications.isRead, false)
           ),
         });
 
