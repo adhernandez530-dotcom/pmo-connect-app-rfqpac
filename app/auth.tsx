@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
   Linking,
+  Modal,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -38,7 +38,12 @@ export default function AuthScreen() {
   // Validation states
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  
+  // Error modal state
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
+  // Show loading screen while checking auth state
   if (authLoading) {
     const loadingText = "Loading...";
     return (
@@ -48,6 +53,12 @@ export default function AuthScreen() {
       </View>
     );
   }
+
+  const showError = (message: string) => {
+    console.log("Showing error to user:", message);
+    setErrorMessage(message);
+    setErrorModalVisible(true);
+  };
 
   const validatePassword = (pwd: string): boolean => {
     if (pwd.length < 6) {
@@ -86,7 +97,7 @@ export default function AuthScreen() {
     console.log("User tapped email auth button - mode:", mode);
     
     if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
+      showError("Please enter email and password");
       return;
     }
 
@@ -98,7 +109,7 @@ export default function AuthScreen() {
     // Validate confirm password in signup mode
     if (mode === "signup") {
       if (!confirmPassword) {
-        Alert.alert("Error", "Please confirm your password");
+        showError("Please confirm your password");
         return;
       }
       if (!validateConfirmPassword(password, confirmPassword)) {
@@ -119,19 +130,8 @@ export default function AuthScreen() {
       }
     } catch (error: any) {
       console.error("Authentication error:", error);
-      const errorMessage = error.message || error.toString() || "Authentication failed";
-      
-      // Show user-friendly error message
-      Alert.alert(
-        "Authentication Error", 
-        errorMessage,
-        [
-          {
-            text: "OK",
-            onPress: () => console.log("User dismissed auth error alert")
-          }
-        ]
-      );
+      const errorMsg = error.message || error.toString() || "Authentication failed";
+      showError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -141,37 +141,18 @@ export default function AuthScreen() {
     console.log("User tapped forgot password");
     
     if (!email) {
-      Alert.alert(
-        "Email Required", 
-        "Please enter your email address to reset your password.",
-        [{ text: "OK" }]
-      );
+      showError("Please enter your email address to reset your password.");
       return;
     }
 
     setLoading(true);
     try {
       await forgotPassword(email);
-      Alert.alert(
-        "Check Your Email",
-        "If an account exists for this email, we've sent a reset link.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              console.log("User acknowledged password reset email");
-              setMode("signin");
-            }
-          }
-        ]
-      );
+      showError("If an account exists for this email, we've sent a reset link. Please check your inbox.");
+      setMode("signin");
     } catch (error: any) {
       console.error("Forgot password error:", error);
-      Alert.alert(
-        "Error",
-        "Failed to send password reset email. Please try again.",
-        [{ text: "OK" }]
-      );
+      showError("Failed to send password reset email. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -185,11 +166,7 @@ export default function AuthScreen() {
     const timeoutId = setTimeout(() => {
       console.log("OAuth timeout - resetting loading state");
       setOauthLoading(false);
-      Alert.alert(
-        "Authentication Timeout",
-        "The authentication process is taking longer than expected. Please try again or use email sign in.",
-        [{ text: "OK" }]
-      );
+      showError("The authentication process is taking longer than expected. Please try again or use email sign in.");
     }, 30000); // 30 second timeout
     
     try {
@@ -199,28 +176,17 @@ export default function AuthScreen() {
       } else if (provider === "apple") {
         await signInWithApple();
       }
-      // Note: On web, the page will redirect to the OAuth provider
-      // On native, the flow will complete and fetchUser will be called
       console.log("Social auth initiated");
       clearTimeout(timeoutId);
     } catch (error: any) {
       console.error("Social auth error:", error);
       clearTimeout(timeoutId);
       setOauthLoading(false);
-      const errorMessage = error.message || error.toString() || "Authentication failed";
+      const errorMsg = error.message || error.toString() || "Authentication failed";
       
-      // Only show alert if there's an actual error (not user cancellation)
-      if (!errorMessage.includes("cancelled") && !errorMessage.includes("canceled")) {
-        Alert.alert(
-          "Authentication Error", 
-          errorMessage,
-          [
-            {
-              text: "OK",
-              onPress: () => console.log("User dismissed social auth error alert")
-            }
-          ]
-        );
+      // Only show error if there's an actual error (not user cancellation)
+      if (!errorMsg.includes("cancelled") && !errorMsg.includes("canceled")) {
+        showError(errorMsg);
       }
     }
   };
@@ -275,6 +241,7 @@ export default function AuthScreen() {
   const andText = " and ";
   const privacyLinkText = "Privacy Policy";
   const oauthLoadingText = "Redirecting to sign in...";
+  const cancelButtonText = "Cancel";
   
   // Check if form is valid for signup
   const isSignupValid = mode === "signup" && 
@@ -288,12 +255,10 @@ export default function AuthScreen() {
 
   const isFormValid = mode === "signup" ? isSignupValid : (email && password);
   
-  // Log authentication state for debugging
   console.log("AuthScreen: Rendering auth screen - mode:", mode, "loading:", loading, "oauthLoading:", oauthLoading);
 
-  // Show OAuth loading state
+  // Show OAuth loading state with cancel button
   if (oauthLoading) {
-    const cancelButtonText = "Cancel";
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -311,13 +276,19 @@ export default function AuthScreen() {
     );
   }
 
+  // Forgot password mode
   if (mode === "forgot-password") {
+    const backToSignInText = "Back to Sign In";
+    
     return (
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.content}>
             <Text style={styles.title}>{titleText}</Text>
             <Text style={styles.subtitle}>{subtitleText}</Text>
@@ -325,6 +296,7 @@ export default function AuthScreen() {
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -350,20 +322,45 @@ export default function AuthScreen() {
               onPress={() => setMode("signin")}
               disabled={loading}
             >
-              <Text style={styles.switchModeText}>Back to Sign In</Text>
+              <Text style={styles.switchModeText}>{backToSignInText}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        {/* Error Modal */}
+        <Modal
+          visible={errorModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setErrorModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Notice</Text>
+              <Text style={styles.modalMessage}>{errorMessage}</Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setErrorModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     );
   }
 
+  // Main auth screen (sign in / sign up)
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.content}>
           <Text style={styles.title}>{titleText}</Text>
           <Text style={styles.subtitle}>{subtitleText}</Text>
@@ -372,6 +369,7 @@ export default function AuthScreen() {
             <TextInput
               style={styles.input}
               placeholder="Name (optional)"
+              placeholderTextColor="#999"
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -382,6 +380,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email"
+            placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -393,6 +392,7 @@ export default function AuthScreen() {
           <TextInput
             style={[styles.input, passwordError ? styles.inputError : null]}
             placeholder="Password (min 6 characters)"
+            placeholderTextColor="#999"
             value={password}
             onChangeText={handlePasswordChange}
             secureTextEntry
@@ -408,6 +408,7 @@ export default function AuthScreen() {
               <TextInput
                 style={[styles.input, confirmPasswordError ? styles.inputError : null]}
                 placeholder="Confirm Password"
+                placeholderTextColor="#999"
                 value={confirmPassword}
                 onChangeText={handleConfirmPasswordChange}
                 secureTextEntry
@@ -491,6 +492,27 @@ export default function AuthScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Error Modal */}
+      <Modal
+        visible={errorModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Notice</Text>
+            <Text style={styles.modalMessage}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -557,6 +579,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 16,
     backgroundColor: "#fff",
+    color: "#000",
   },
   inputError: {
     borderColor: "#ff3b30",
@@ -665,5 +688,49 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "500",
     textDecorationLine: "underline",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 24,
+    width: "80%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 12,
+    textAlign: "center",
+    color: "#000",
+  },
+  modalMessage: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#333",
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
