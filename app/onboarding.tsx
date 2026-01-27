@@ -9,7 +9,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   Modal,
 } from "react-native";
@@ -73,7 +72,7 @@ export default function OnboardingScreen() {
   const [usernameError, setUsernameError] = useState("");
 
   const showError = (message: string) => {
-    console.log("Showing error modal:", message);
+    console.log("Onboarding: Showing error modal:", message);
     setErrorMessage(message);
     setErrorModalVisible(true);
   };
@@ -85,6 +84,7 @@ export default function OnboardingScreen() {
       return;
     }
 
+    console.log("Onboarding: Checking username availability:", usernameToCheck);
     setCheckingUsername(true);
     setUsernameError("");
 
@@ -93,15 +93,19 @@ export default function OnboardingScreen() {
         `/api/onboarding/check-username/${usernameToCheck}`
       );
 
+      console.log("Onboarding: Username check response:", response);
+
       if (response.available) {
         setUsernameAvailable(true);
         setUsernameError("");
+        console.log("Onboarding: Username is available");
       } else {
         setUsernameAvailable(false);
         setUsernameError("Username is already taken");
+        console.log("Onboarding: Username is taken");
       }
     } catch (error) {
-      console.error("Error checking username:", error);
+      console.error("Onboarding: Error checking username:", error);
       setUsernameError("Could not check username availability");
     } finally {
       setCheckingUsername(false);
@@ -110,18 +114,22 @@ export default function OnboardingScreen() {
 
   const handleUsernameChange = (text: string) => {
     const cleanedUsername = text.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    console.log("Onboarding: Username changed to:", cleanedUsername);
     setUsername(cleanedUsername);
     setUsernameAvailable(null);
     setUsernameError("");
   };
 
   const handleUsernameBlur = () => {
+    console.log("Onboarding: Username field blurred, checking availability");
     if (username.length >= 3) {
       checkUsernameAvailability(username);
     }
   };
 
   const handleNext = () => {
+    console.log("Onboarding: User tapped Next button on step", step);
+    
     if (step === 1) {
       if (!username || username.length < 3) {
         showError("Username must be at least 3 characters");
@@ -135,30 +143,34 @@ export default function OnboardingScreen() {
         showError("Please choose a different username");
         return;
       }
-      console.log("User completed Step 1 - moving to Step 2");
+      console.log("Onboarding: Step 1 validation passed, moving to Step 2");
       setStep(2);
     } else if (step === 2) {
-      console.log("User completed Step 2 - moving to Step 3");
+      console.log("Onboarding: Step 2 completed, moving to Step 3");
       setStep(3);
     } else if (step === 3) {
-      console.log("User completed Step 3 - moving to Step 4");
+      console.log("Onboarding: Step 3 completed, moving to Step 4");
       setStep(4);
     } else if (step === 4) {
-      console.log("User completed Step 4 - moving to Step 5 (Permissions)");
+      console.log("Onboarding: Step 4 completed, moving to Step 5 (Permissions)");
       setStep(5);
       checkAllPermissions();
     }
   };
 
   const handleBack = () => {
+    console.log("Onboarding: User tapped Back button on step", step);
     if (step > 1) {
-      console.log(`User going back from Step ${step} to Step ${step - 1}`);
-      setStep(step - 1);
+      const newStep = step - 1;
+      console.log("Onboarding: Going back to step", newStep);
+      setStep(newStep);
     }
   };
 
   const handleAddService = () => {
     const trimmedService = serviceInput.trim();
+    console.log("Onboarding: User tapped Add Service button, input:", trimmedService);
+    
     if (!trimmedService) {
       showError("Please enter a service name");
       return;
@@ -171,19 +183,21 @@ export default function OnboardingScreen() {
       showError("This service is already added");
       return;
     }
-    console.log("Adding service:", trimmedService);
+    console.log("Onboarding: Adding service:", trimmedService);
     setServices([...services, trimmedService]);
     setServiceInput("");
   };
 
   const handleRemoveService = (index: number) => {
-    console.log("Removing service at index:", index);
+    console.log("Onboarding: User tapped Remove Service button at index:", index);
     const updatedServices = services.filter((_, i) => i !== index);
     setServices(updatedServices);
   };
 
   const handleAddKnowledge = () => {
     const trimmedKnowledge = knowledgeInput.trim();
+    console.log("Onboarding: User tapped Add Knowledge button, input:", trimmedKnowledge);
+    
     if (!trimmedKnowledge) {
       showError("Please enter a knowledge topic");
       return;
@@ -196,13 +210,13 @@ export default function OnboardingScreen() {
       showError("This topic is already added");
       return;
     }
-    console.log("Adding knowledge topic:", trimmedKnowledge);
+    console.log("Onboarding: Adding knowledge topic:", trimmedKnowledge);
     setKnowledge([...knowledge, trimmedKnowledge]);
     setKnowledgeInput("");
   };
 
   const handleRemoveKnowledge = (index: number) => {
-    console.log("Removing knowledge topic at index:", index);
+    console.log("Onboarding: User tapped Remove Knowledge button at index:", index);
     const updatedKnowledge = knowledge.filter((_, i) => i !== index);
     setKnowledge(updatedKnowledge);
   };
@@ -240,62 +254,67 @@ export default function OnboardingScreen() {
   };
 
   const requestCameraPermission = async () => {
-    console.log('Onboarding: User tapped Camera permission');
+    console.log('Onboarding: User tapped Camera permission button');
     try {
       const result = await Camera.requestCameraPermissionsAsync();
       console.log('Onboarding: Camera permission result:', result.status);
       setPermissions(prev => ({ ...prev, camera: result.status }));
     } catch (error) {
       console.error('Onboarding: Error requesting camera permission:', error);
+      showError('Failed to request camera permission');
     }
   };
 
   const requestMicrophonePermission = async () => {
-    console.log('Onboarding: User tapped Microphone permission');
+    console.log('Onboarding: User tapped Microphone permission button');
     try {
       const result = await Camera.requestMicrophonePermissionsAsync();
       console.log('Onboarding: Microphone permission result:', result.status);
       setPermissions(prev => ({ ...prev, microphone: result.status }));
     } catch (error) {
       console.error('Onboarding: Error requesting microphone permission:', error);
+      showError('Failed to request microphone permission');
     }
   };
 
   const requestPhotoLibraryPermission = async () => {
-    console.log('Onboarding: User tapped Photo Library permission');
+    console.log('Onboarding: User tapped Photo Library permission button');
     try {
       const result = await MediaLibrary.requestPermissionsAsync();
       console.log('Onboarding: Photo Library permission result:', result.status);
       setPermissions(prev => ({ ...prev, photoLibrary: result.status }));
     } catch (error) {
       console.error('Onboarding: Error requesting photo library permission:', error);
+      showError('Failed to request photo library permission');
     }
   };
 
   const requestContactsPermission = async () => {
-    console.log('Onboarding: User tapped Contacts permission');
+    console.log('Onboarding: User tapped Contacts permission button');
     try {
       const result = await Contacts.requestPermissionsAsync();
       console.log('Onboarding: Contacts permission result:', result.status);
       setPermissions(prev => ({ ...prev, contacts: result.status }));
     } catch (error) {
       console.error('Onboarding: Error requesting contacts permission:', error);
+      showError('Failed to request contacts permission');
     }
   };
 
   const requestLocationPermission = async () => {
-    console.log('Onboarding: User tapped Location permission');
+    console.log('Onboarding: User tapped Location permission button');
     try {
       const result = await Location.requestForegroundPermissionsAsync();
       console.log('Onboarding: Location permission result:', result.status);
       setPermissions(prev => ({ ...prev, location: result.status }));
     } catch (error) {
       console.error('Onboarding: Error requesting location permission:', error);
+      showError('Failed to request location permission');
     }
   };
 
   const requestNotificationsPermission = async () => {
-    console.log('Onboarding: User tapped Notifications permission');
+    console.log('Onboarding: User tapped Notifications permission button');
     try {
       const result = await Notifications.requestPermissionsAsync({
         ios: {
@@ -308,17 +327,23 @@ export default function OnboardingScreen() {
       setPermissions(prev => ({ ...prev, notifications: result.status }));
     } catch (error) {
       console.error('Onboarding: Error requesting notifications permission:', error);
+      showError('Failed to request notifications permission');
     }
   };
 
   const requestAllPermissions = async () => {
-    console.log('Onboarding: User tapped Request All Permissions');
-    await requestCameraPermission();
-    await requestMicrophonePermission();
-    await requestPhotoLibraryPermission();
-    await requestContactsPermission();
-    await requestLocationPermission();
-    await requestNotificationsPermission();
+    console.log('Onboarding: User tapped Request All Permissions button');
+    try {
+      await requestCameraPermission();
+      await requestMicrophonePermission();
+      await requestPhotoLibraryPermission();
+      await requestContactsPermission();
+      await requestLocationPermission();
+      await requestNotificationsPermission();
+      console.log('Onboarding: All permissions requested');
+    } catch (error) {
+      console.error('Onboarding: Error requesting all permissions:', error);
+    }
   };
 
   const getStatusColor = (status: PermissionStatus) => {
@@ -348,6 +373,8 @@ export default function OnboardingScreen() {
   };
 
   const handleComplete = async () => {
+    console.log("Onboarding: User tapped Complete Setup button");
+    
     if (!username || !fullName) {
       showError("Username and full name are required");
       return;
@@ -366,25 +393,26 @@ export default function OnboardingScreen() {
       knowledge: knowledge.length > 0 ? knowledge : undefined,
     };
     
-    console.log("Completing onboarding with data:", onboardingData);
+    console.log("Onboarding: Submitting onboarding data:", onboardingData);
 
     try {
       const response = await authenticatedPost(`/api/onboarding/complete`, onboardingData);
 
-      console.log("Onboarding completed successfully:", response);
+      console.log("Onboarding: Backend response:", response);
+      console.log("Onboarding: Onboarding completed successfully");
       
-      // Use custom modal instead of Alert for cross-platform compatibility
+      // Show success message
       setErrorMessage("Your profile has been set up successfully! Welcome to the community.");
       setErrorModalVisible(true);
       
       // Navigate after a short delay
       setTimeout(() => {
-        console.log("Navigating to home after successful onboarding");
+        console.log("Onboarding: Navigating to home after successful onboarding");
         router.replace("/(tabs)");
       }, 1500);
     } catch (error: any) {
-      console.error("Error completing onboarding:", error);
-      console.error("Error details:", {
+      console.error("Onboarding: Error completing onboarding:", error);
+      console.error("Onboarding: Error details:", {
         message: error?.message,
         stack: error?.stack,
         name: error?.name,
@@ -409,7 +437,7 @@ export default function OnboardingScreen() {
   };
 
   const handleSkipStep4 = async () => {
-    console.log("User skipped Step 4 (Services & Knowledge) - moving to Step 5 (Permissions)");
+    console.log("Onboarding: User tapped Skip button on Step 4");
     setStep(5);
     checkAllPermissions();
   };
@@ -569,7 +597,10 @@ export default function OnboardingScreen() {
 
         <TouchableOpacity
           style={styles.checkboxContainer}
-          onPress={() => setAllowContacts(!allowContacts)}
+          onPress={() => {
+            console.log("Onboarding: User toggled Allow Contacts checkbox");
+            setAllowContacts(!allowContacts);
+          }}
         >
           <View style={[styles.checkbox, allowContacts && styles.checkboxChecked]}>
             {allowContacts && (
@@ -978,7 +1009,10 @@ export default function OnboardingScreen() {
             <Text style={styles.modalMessage}>{errorMessage}</Text>
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => setErrorModalVisible(false)}
+              onPress={() => {
+                console.log("Onboarding: User tapped OK on modal");
+                setErrorModalVisible(false);
+              }}
             >
               <Text style={styles.modalButtonText}>OK</Text>
             </TouchableOpacity>
