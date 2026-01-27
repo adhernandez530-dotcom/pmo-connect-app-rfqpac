@@ -53,16 +53,17 @@ function RootLayoutNav() {
     try {
       const { authenticatedGet } = await import("@/utils/api");
       
-      const profile = await authenticatedGet("/api/users/me");
-      console.log("RootLayout: Profile data - onboardingCompleted:", profile.onboardingCompleted);
+      // Check if user profile exists
+      const profileCheck = await authenticatedGet("/api/init/profile-exists");
+      console.log("RootLayout: Profile exists check:", profileCheck.exists);
 
       setOnboardingChecked(true);
 
-      if (!profile.onboardingCompleted) {
-        console.log("RootLayout: Onboarding not completed, redirecting to /onboarding");
+      if (!profileCheck.exists) {
+        console.log("RootLayout: Profile does not exist, redirecting to /onboarding");
         router.replace("/onboarding");
       } else {
-        console.log("RootLayout: Onboarding completed, redirecting to home");
+        console.log("RootLayout: Profile exists, redirecting to home");
         router.replace("/(tabs)/(home)");
       }
     } catch (error) {

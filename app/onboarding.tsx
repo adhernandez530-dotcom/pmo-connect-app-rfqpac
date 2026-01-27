@@ -11,11 +11,12 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { authenticatedPost, authenticatedGet } from "@/utils/api";
+import { authenticatedPost, apiGet } from "@/utils/api";
 import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as Contacts from "expo-contacts";
@@ -38,6 +39,10 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
+
+  // Error modal state
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Form fields
   const [username, setUsername] = useState("");
@@ -67,6 +72,12 @@ export default function OnboardingScreen() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameError, setUsernameError] = useState("");
 
+  const showError = (message: string) => {
+    console.log("Showing error modal:", message);
+    setErrorMessage(message);
+    setErrorModalVisible(true);
+  };
+
   const checkUsernameAvailability = async (usernameToCheck: string) => {
     if (!usernameToCheck || usernameToCheck.length < 3) {
       setUsernameAvailable(null);
@@ -78,7 +89,7 @@ export default function OnboardingScreen() {
     setUsernameError("");
 
     try {
-      const response = await authenticatedGet(
+      const response = await apiGet(
         `/api/onboarding/check-username/${usernameToCheck}`
       );
 
@@ -113,15 +124,15 @@ export default function OnboardingScreen() {
   const handleNext = () => {
     if (step === 1) {
       if (!username || username.length < 3) {
-        Alert.alert("Error", "Username must be at least 3 characters");
+        showError("Username must be at least 3 characters");
         return;
       }
       if (!fullName) {
-        Alert.alert("Error", "Please enter your full name");
+        showError("Please enter your full name");
         return;
       }
       if (usernameAvailable === false) {
-        Alert.alert("Error", "Please choose a different username");
+        showError("Please choose a different username");
         return;
       }
       console.log("User completed Step 1 - moving to Step 2");
@@ -149,15 +160,15 @@ export default function OnboardingScreen() {
   const handleAddService = () => {
     const trimmedService = serviceInput.trim();
     if (!trimmedService) {
-      Alert.alert("Error", "Please enter a service name");
+      showError("Please enter a service name");
       return;
     }
     if (services.length >= 10) {
-      Alert.alert("Limit Reached", "You can add up to 10 services");
+      showError("You can add up to 10 services");
       return;
     }
     if (services.includes(trimmedService)) {
-      Alert.alert("Duplicate", "This service is already added");
+      showError("This service is already added");
       return;
     }
     console.log("Adding service:", trimmedService);
@@ -174,15 +185,15 @@ export default function OnboardingScreen() {
   const handleAddKnowledge = () => {
     const trimmedKnowledge = knowledgeInput.trim();
     if (!trimmedKnowledge) {
-      Alert.alert("Error", "Please enter a knowledge topic");
+      showError("Please enter a knowledge topic");
       return;
     }
     if (knowledge.length >= 10) {
-      Alert.alert("Limit Reached", "You can add up to 10 knowledge topics");
+      showError("You can add up to 10 knowledge topics");
       return;
     }
     if (knowledge.includes(trimmedKnowledge)) {
-      Alert.alert("Duplicate", "This topic is already added");
+      showError("This topic is already added");
       return;
     }
     console.log("Adding knowledge topic:", trimmedKnowledge);
@@ -338,7 +349,7 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     if (!username || !fullName) {
-      Alert.alert("Error", "Username and full name are required");
+      showError("Username and full name are required");
       return;
     }
 
@@ -361,15 +372,16 @@ export default function OnboardingScreen() {
       const response = await authenticatedPost(`/api/onboarding/complete`, onboardingData);
 
       console.log("Onboarding completed successfully:", response);
-      Alert.alert("Welcome!", "Your profile has been set up successfully", [
-        {
-          text: "Get Started",
-          onPress: () => {
-            console.log("User tapped Get Started - navigating to home");
-            router.replace("/(tabs)");
-          },
-        },
-      ]);
+      
+      // Use custom modal instead of Alert for cross-platform compatibility
+      setErrorMessage("Your profile has been set up successfully! Welcome to the community.");
+      setErrorModalVisible(true);
+      
+      // Navigate after a short delay
+      setTimeout(() => {
+        console.log("Navigating to home after successful onboarding");
+        router.replace("/(tabs)");
+      }, 1500);
     } catch (error: any) {
       console.error("Error completing onboarding:", error);
       console.error("Error details:", {
@@ -378,8 +390,19 @@ export default function OnboardingScreen() {
         name: error?.name,
       });
       
-      const errorMessage = error?.message || "Failed to complete onboarding. Please try again.";
-      Alert.alert("Error", errorMessage);
+      let userFriendlyMessage = "Failed to complete setup. Please try again.";
+      
+      if (error?.message?.includes("401")) {
+        userFriendlyMessage = "Authentication error. Please sign out and sign in again.";
+      } else if (error?.message?.includes("500")) {
+        userFriendlyMessage = "Server error. Our team has been notified. Please try again in a moment.";
+      } else if (error?.message?.includes("username")) {
+        userFriendlyMessage = "This username is already taken. Please choose a different one.";
+      } else if (error?.message) {
+        userFriendlyMessage = error.message;
+      }
+      
+      showError(userFriendlyMessage);
     } finally {
       setLoading(false);
     }
@@ -940,6 +963,28 @@ export default function OnboardingScreen() {
           {step === 5 && renderStep5()}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={errorModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {errorMessage.includes("successfully") ? "Success!" : "Notice"}
+            </Text>
+            <Text style={styles.modalMessage}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -1209,5 +1254,50 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalButton: {
+    height: 50,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
