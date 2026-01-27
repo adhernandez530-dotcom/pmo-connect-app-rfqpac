@@ -176,6 +176,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Note: The page will redirect, so code after this won't execute
         console.log("AuthContext: OAuth redirect initiated");
+        
+        // After redirect back, check for session
+        // This will be called when the page loads after OAuth callback
+        setTimeout(async () => {
+          console.log("AuthContext: Checking for session after OAuth redirect");
+          await fetchUser();
+        }, 1000);
       } else {
         console.log("AuthContext: Starting native OAuth flow for", provider);
         await authClient.signIn.social({
@@ -200,6 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         errorMessage = `The authentication service is currently being updated. Please wait a moment and try ${providerName} sign in again, or use email sign in.`;
       } else if (error?.status === 401 || error?.message?.includes("401") || error?.message?.includes("Unauthorized")) {
         errorMessage = `${providerName} authentication failed. Please check your ${providerName} account settings.`;
+      } else if (error?.status === 404 || error?.message?.includes("404") || error?.message?.includes("not found")) {
+        errorMessage = `${providerName} sign in is not available yet. The authentication service is being set up. Please try email sign in or wait a moment.`;
       } else if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
         // Don't show error for user cancellation
         console.log("AuthContext: User cancelled OAuth flow");

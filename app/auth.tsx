@@ -180,6 +180,18 @@ export default function AuthScreen() {
   const handleSocialAuth = async (provider: "google" | "apple") => {
     console.log("User tapped social auth button - provider:", provider);
     setOauthLoading(true);
+    
+    // Set a timeout to prevent getting stuck on loading screen
+    const timeoutId = setTimeout(() => {
+      console.log("OAuth timeout - resetting loading state");
+      setOauthLoading(false);
+      Alert.alert(
+        "Authentication Timeout",
+        "The authentication process is taking longer than expected. Please try again or use email sign in.",
+        [{ text: "OK" }]
+      );
+    }, 30000); // 30 second timeout
+    
     try {
       console.log("Starting", provider, "sign in flow");
       if (provider === "google") {
@@ -190,8 +202,10 @@ export default function AuthScreen() {
       // Note: On web, the page will redirect to the OAuth provider
       // On native, the flow will complete and fetchUser will be called
       console.log("Social auth initiated");
+      clearTimeout(timeoutId);
     } catch (error: any) {
       console.error("Social auth error:", error);
+      clearTimeout(timeoutId);
       setOauthLoading(false);
       const errorMessage = error.message || error.toString() || "Authentication failed";
       
@@ -279,10 +293,20 @@ export default function AuthScreen() {
 
   // Show OAuth loading state
   if (oauthLoading) {
+    const cancelButtonText = "Cancel";
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
         <Text style={styles.loadingText}>{oauthLoadingText}</Text>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => {
+            console.log("User cancelled OAuth loading");
+            setOauthLoading(false);
+          }}
+        >
+          <Text style={styles.cancelButtonText}>{cancelButtonText}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -486,6 +510,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: "#666",
+  },
+  cancelButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+  },
+  cancelButtonText: {
+    color: "#007AFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   scrollContent: {
     flexGrow: 1,
