@@ -50,6 +50,13 @@
       "when": 1769543814995,
       "tag": "20260127195654_youthful_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1769600000000,
+      "tag": "20260128000000_create_application_tables",
+      "breakpoints": true
     }
   ]
 }
