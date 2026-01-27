@@ -29,49 +29,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_CHECK_KEY = "putmeon_session_checked";
 
-function openOAuthPopup(provider: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const popupUrl = `${window.location.origin}/auth-popup?provider=${provider}`;
-    const width = 500;
-    const height = 600;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
-
-    const popup = window.open(
-      popupUrl,
-      "oauth-popup",
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
-    );
-
-    if (!popup) {
-      reject(new Error("Failed to open popup. Please allow popups."));
-      return;
-    }
-
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "oauth-success") {
-        window.removeEventListener("message", handleMessage);
-        clearInterval(checkClosed);
-        resolve();
-      } else if (event.data?.type === "oauth-error") {
-        window.removeEventListener("message", handleMessage);
-        clearInterval(checkClosed);
-        reject(new Error(event.data.error || "OAuth failed"));
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener("message", handleMessage);
-        reject(new Error("Authentication cancelled"));
-      }
-    }, 500);
-  });
-}
-
 async function markSessionChecked() {
   console.log("AuthContext: Marking session as checked");
   if (Platform.OS === "web") {
@@ -206,11 +163,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithSocial = async (provider: "google" | "apple") => {
     try {
       console.log("AuthContext: Signing in with", provider, "on platform:", Platform.OS);
+      
       if (Platform.OS === "web") {
-        console.log("AuthContext: Opening OAuth popup for", provider);
-        await openOAuthPopup(provider);
-        console.log("AuthContext: OAuth popup completed, fetching user session");
-        await fetchUser();
+        console.log("AuthContext: Initiating", provider, "OAuth flow on web");
+        
+        // On web, Better Auth will redirect the current page to the OAuth provider
+        // The callback URL will bring the user back to the app with the session set
+        await authClient.signIn.social({
+          provider,
+          callbackURL: window.location.origin + "/",
+        });
+        
+        // Note: The page will redirect, so code after this won't execute
+        console.log("AuthContext: OAuth redirect initiated");
       } else {
         console.log("AuthContext: Starting native OAuth flow for", provider);
         await authClient.signIn.social({
@@ -220,8 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Fetch user session after successful social sign in
         await fetchUser();
+        console.log("AuthContext:", provider, "sign in successful");
       }
-      console.log("AuthContext:", provider, "sign in successful");
     } catch (error: any) {
       console.error(`AuthContext: ${provider} sign in failed:`, error);
       console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));

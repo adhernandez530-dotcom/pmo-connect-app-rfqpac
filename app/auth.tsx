@@ -33,6 +33,7 @@ export default function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   
   // Validation states
   const [passwordError, setPasswordError] = useState("");
@@ -178,7 +179,7 @@ export default function AuthScreen() {
 
   const handleSocialAuth = async (provider: "google" | "apple") => {
     console.log("User tapped social auth button - provider:", provider);
-    setLoading(true);
+    setOauthLoading(true);
     try {
       console.log("Starting", provider, "sign in flow");
       if (provider === "google") {
@@ -186,9 +187,12 @@ export default function AuthScreen() {
       } else if (provider === "apple") {
         await signInWithApple();
       }
-      console.log("Social auth successful - root layout will handle navigation");
+      // Note: On web, the page will redirect to the OAuth provider
+      // On native, the flow will complete and fetchUser will be called
+      console.log("Social auth initiated");
     } catch (error: any) {
       console.error("Social auth error:", error);
+      setOauthLoading(false);
       const errorMessage = error.message || error.toString() || "Authentication failed";
       
       // Only show alert if there's an actual error (not user cancellation)
@@ -204,8 +208,6 @@ export default function AuthScreen() {
           ]
         );
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -258,6 +260,7 @@ export default function AuthScreen() {
   const termsLinkText = "Terms of Service";
   const andText = " and ";
   const privacyLinkText = "Privacy Policy";
+  const oauthLoadingText = "Redirecting to sign in...";
   
   // Check if form is valid for signup
   const isSignupValid = mode === "signup" && 
@@ -272,7 +275,17 @@ export default function AuthScreen() {
   const isFormValid = mode === "signup" ? isSignupValid : (email && password);
   
   // Log authentication state for debugging
-  console.log("AuthScreen: Rendering auth screen - mode:", mode, "loading:", loading);
+  console.log("AuthScreen: Rendering auth screen - mode:", mode, "loading:", loading, "oauthLoading:", oauthLoading);
+
+  // Show OAuth loading state
+  if (oauthLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>{oauthLoadingText}</Text>
+      </View>
+    );
+  }
 
   if (mode === "forgot-password") {
     return (
