@@ -60,6 +60,8 @@ export const apiCall = async <T = any>(
       credentials: "include", // Important: Include cookies for Better Auth
     });
 
+    console.log("[API] Response status:", response.status, response.statusText);
+
     if (!response.ok) {
       const text = await response.text();
       console.error("[API] Error response:", response.status, text);
@@ -181,14 +183,17 @@ export const authenticatedApiCall = async <T = any>(
   options?: RequestInit
 ): Promise<T> => {
   // Check for session
+  console.log("[API] Checking for authentication session");
   const session = await authClient.getSession();
 
   if (!session?.data?.session) {
     console.error("[API] No authentication session found");
+    console.error("[API] Session data:", JSON.stringify(session, null, 2));
     throw new Error("Authentication session not found. Please sign in.");
   }
 
-  console.log("[API] Session found, making authenticated request");
+  console.log("[API] Session found for user:", session.data.user?.email);
+  console.log("[API] Session token:", session.data.session.token ? "present" : "missing");
 
   // Check if body is FormData to avoid setting Content-Type
   const isFormData = options?.body instanceof FormData;
@@ -294,12 +299,16 @@ export const authenticatedFetch = async (
   url: string,
   options?: RequestInit
 ): Promise<Response> => {
+  console.log("[API] Authenticated fetch - checking session");
   const session = await authClient.getSession();
 
   if (!session?.data?.session) {
     console.error("[API] No authentication session found for fetch");
+    console.error("[API] Session data:", JSON.stringify(session, null, 2));
     throw new Error("Authentication session not found. Please sign in.");
   }
+
+  console.log("[API] Session found for fetch, user:", session.data.user?.email);
 
   const fullUrl = url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
   console.log("[API] Authenticated fetch:", fullUrl, options?.method || "GET");

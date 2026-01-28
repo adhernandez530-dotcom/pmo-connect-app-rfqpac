@@ -61,6 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const session = await authClient.getSession();
       
+      console.log("AuthContext: Session response:", {
+        hasSession: !!session?.data?.session,
+        hasUser: !!session?.data?.user,
+        userEmail: session?.data?.user?.email,
+        sessionToken: session?.data?.session?.token ? "present" : "missing",
+      });
+      
       if (session?.data?.user && session?.data?.session) {
         console.log("AuthContext: User session found:", session.data.user.email);
         setUser(session.data.user as User);
@@ -82,11 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     try {
       console.log("AuthContext: Signing in with email:", email);
-      await authClient.signIn.email({ 
+      const result = await authClient.signIn.email({ 
         email, 
         password,
       });
-      console.log("AuthContext: Sign in API call completed");
+      console.log("AuthContext: Sign in API call completed, result:", {
+        hasData: !!result?.data,
+        hasSession: !!result?.data?.session,
+        hasUser: !!result?.data?.user,
+      });
       
       // Fetch user session after successful sign in
       await fetchUser();
@@ -120,12 +131,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
       console.log("AuthContext: Signing up with email:", email, "name:", name);
-      await authClient.signUp.email({
+      const result = await authClient.signUp.email({
         email,
         password,
         name: name || undefined,
       });
-      console.log("AuthContext: Sign up API call completed");
+      console.log("AuthContext: Sign up API call completed, result:", {
+        hasData: !!result?.data,
+        hasSession: !!result?.data?.session,
+        hasUser: !!result?.data?.user,
+      });
       
       // Fetch user session after successful sign up
       await fetchUser();

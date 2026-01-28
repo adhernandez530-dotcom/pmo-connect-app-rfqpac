@@ -30,7 +30,7 @@ export const unstable_settings = {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const networkState = useNetworkState();
-  const { user, loading } = useAuth();
+  const { user, loading, fetchUser } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const [onboardingChecked, setOnboardingChecked] = React.useState(false);
@@ -53,16 +53,21 @@ function RootLayoutNav() {
     try {
       const { authenticatedGet } = await import("@/utils/api");
       
-      // Add a small delay to ensure session cookies are set
+      // Ensure session is fresh before checking profile
+      console.log("RootLayout: Refreshing session before profile check");
+      await fetchUser();
+      
+      // Small delay to ensure session cookies are set
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Check if user profile exists
+      // Check if profile exists
+      console.log("RootLayout: Checking if profile exists");
       const profileCheck = await authenticatedGet("/api/init/profile-exists");
       console.log("RootLayout: Profile exists check:", profileCheck.exists);
 
       setOnboardingChecked(true);
 
-      if (!profileCheck.exists) {
+      if (!profileCheck?.exists) {
         console.log("RootLayout: Profile does not exist, redirecting to /onboarding");
         router.replace("/onboarding");
       } else {
@@ -72,19 +77,30 @@ function RootLayoutNav() {
     } catch (error: any) {
       console.error("RootLayout: Error checking onboarding status:", error);
       
-      // If we get a 401 error, it means the session is not established yet
-      // This can happen right after sign-up or sign-in
+      // If we get a 401 error, the session is invalid - sign out and redirect to auth
       if (error?.message?.includes("401") || error?.message?.includes("Unauthorized")) {
-        console.log("RootLayout: Session not established yet, assuming onboarding needed");
-        setOnboardingChecked(true);
-        router.replace("/onboarding");
+        console.log("RootLayout: Session invalid, signing out user");
+        Alert.alert(
+          "Session Expired",
+          "Your session has expired. Please sign in again.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setOnboardingChecked(false);
+                router.replace("/auth");
+              }
+            }
+          ]
+        );
       } else {
         // For other errors, assume onboarding is needed
+        console.log("RootLayout: Assuming onboarding needed due to error");
         setOnboardingChecked(true);
         router.replace("/onboarding");
       }
     }
-  }, [user, router]);
+  }, [user, router, fetchUser]);
 
   // Main authentication and routing logic
   React.useEffect(() => {
