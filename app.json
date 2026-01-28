@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "PMOConnect",
-    "slug": "PMO Connect",
+    "slug": "PMOConnect",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
