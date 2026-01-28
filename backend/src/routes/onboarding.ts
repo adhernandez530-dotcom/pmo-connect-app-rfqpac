@@ -23,20 +23,30 @@ export function registerOnboardingRoutes(app: App) {
           method: request.method,
           path: request.url,
           bodyProvided: !!request.body,
+          contentType: request.headers['content-type'],
         },
-        'Onboarding request received'
+        'Onboarding request received - attempting authentication'
       );
 
       const session = await requireAuth(request, reply);
       if (!session) {
-        app.logger.warn(
+        app.logger.error(
           {
             path: request.url,
+            statusCode: reply.statusCode,
           },
-          'Authentication failed - no session returned from requireAuth'
+          'Authentication failed - no session returned from requireAuth. Session validation failed or no valid auth cookies present.'
         );
         return;
       }
+
+      app.logger.info(
+        {
+          userId: session.user.id,
+          userEmail: session.user.email,
+        },
+        'Authentication successful - user session validated'
+      );
 
       const { username, fullName, location, bio, phoneNumber, allowContacts } = request.body as {
         username: string;
@@ -155,6 +165,7 @@ export function registerOnboardingRoutes(app: App) {
    * GET /api/onboarding/debug
    * Debug endpoint to check authentication status and session info
    * Requires authentication to see which session is being used
+   * Returns diagnostic information about session validation
    */
   app.fastify.get(
     '/api/onboarding/debug',
@@ -163,6 +174,7 @@ export function registerOnboardingRoutes(app: App) {
         {
           method: request.method,
           path: request.url,
+          hasAuthHeader: !!request.headers.authorization,
         },
         'Onboarding debug endpoint accessed'
       );
@@ -170,22 +182,51 @@ export function registerOnboardingRoutes(app: App) {
       try {
         const session = await requireAuth(request, reply);
         if (!session) {
-          app.logger.warn('Debug: No session found');
-          return { authenticated: false, message: 'No valid session' };
+          app.logger.warn(
+            {
+              hasAuthHeader: !!request.headers.authorization,
+              statusCode: reply.statusCode,
+            },
+            'Debug: No session found - authentication middleware returned null'
+          );
+          return {
+            authenticated: false,
+            message: 'No valid session',
+            diagnostic: 'Session validation failed. Check that session cookies are being sent with the request and that the session token is valid in the database.',
+            nextSteps: [
+              '1. Verify session endpoint works: GET /api/auth/get-session',
+              '2. Check that response includes session token and user data',
+              '3. Ensure cookies from session endpoint are sent with subsequent requests',
+              '4. Verify session token exists in database session table',
+            ],
+          };
         }
 
-        app.logger.info({ userId: session.user.id }, 'Debug: Session authenticated');
+        app.logger.info(
+          { userId: session.user.id, userEmail: session.user.email },
+          'Debug: Session authenticated successfully'
+        );
 
         return {
           authenticated: true,
           userId: session.user.id,
           userEmail: session.user.email,
           sessionId: session.session?.id,
+          sessionToken: session.session?.token ? '***' : 'not provided',
+          expiresAt: session.session?.expiresAt,
           message: 'Session is valid and can be used for onboarding',
+          nextSteps: [
+            'POST /api/onboarding/complete with username, fullName, location, bio, phoneNumber',
+            'Profile will be created/updated using this authenticated user',
+          ],
         };
       } catch (error) {
         app.logger.error({ err: error }, 'Debug endpoint error');
-        return { authenticated: false, error: String(error) };
+        return {
+          authenticated: false,
+          error: String(error),
+          diagnostic: 'An error occurred while validating the session',
+        };
       }
     }
   );

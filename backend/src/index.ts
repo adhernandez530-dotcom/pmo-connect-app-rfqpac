@@ -1,5 +1,9 @@
 import { createApplication } from "@specific-dev/framework";
-import * as schema from './db/schema.js';
+import * as appSchema from './db/schema.js';
+import * as authSchema from './db/auth-schema.js';
+
+// Merge both schemas - framework needs to see auth schema explicitly
+const schema = { ...appSchema, ...authSchema };
 
 // Import route registration functions
 import { registerInitRoutes } from './routes/init.js';
