@@ -31,7 +31,6 @@ export default function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   
@@ -130,8 +129,8 @@ export default function AuthScreen() {
         await signInWithEmail(email, password);
         console.log("✅ Sign in successful - root layout will handle navigation");
       } else {
-        console.log("📝 Calling signUpWithEmail for:", email, "name:", name || "(none)");
-        await signUpWithEmail(email, password, name || undefined);
+        console.log("📝 Calling signUpWithEmail for:", email, "(name will be set in onboarding)");
+        await signUpWithEmail(email, password, undefined);
         console.log("✅ Sign up successful - root layout will redirect to email verification");
       }
     } catch (error: any) {
@@ -380,18 +379,6 @@ export default function AuthScreen() {
         <View style={styles.content}>
           <Text style={styles.title}>{titleText}</Text>
           <Text style={styles.subtitle}>{subtitleText}</Text>
-
-          {mode === "signup" && (
-            <TextInput
-              style={styles.input}
-              placeholder="Name (optional)"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              editable={!loading}
-            />
-          )}
 
           <TextInput
             style={styles.input}
