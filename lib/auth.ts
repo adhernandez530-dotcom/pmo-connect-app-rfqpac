@@ -29,8 +29,8 @@ export const authClient = createAuthClient({
   baseURL: API_URL,
   plugins: [
     expoClient({
-      scheme: "putmeon",
-      storagePrefix: "putmeon",
+      scheme: "pmoconnect",
+      storagePrefix: "pmoconnect",
       storage,
     }),
   ],
