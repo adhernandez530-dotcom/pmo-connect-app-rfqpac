@@ -94,42 +94,48 @@ export default function AuthScreen() {
   };
 
   const handleEmailAuth = async () => {
-    console.log("User tapped email auth button - mode:", mode);
+    console.log("🔵 User tapped email auth button - mode:", mode);
+    console.log("🔵 Email:", email, "Password length:", password.length);
     
     if (!email || !password) {
+      console.log("❌ Validation failed: Missing email or password");
       showError("Please enter email and password");
       return;
     }
 
     // Validate password
     if (!validatePassword(password)) {
+      console.log("❌ Validation failed: Password too short");
       return;
     }
 
     // Validate confirm password in signup mode
     if (mode === "signup") {
       if (!confirmPassword) {
+        console.log("❌ Validation failed: Missing confirm password");
         showError("Please confirm your password");
         return;
       }
       if (!validateConfirmPassword(password, confirmPassword)) {
+        console.log("❌ Validation failed: Passwords don't match");
         return;
       }
     }
 
+    console.log("✅ Validation passed, starting authentication");
     setLoading(true);
     try {
       if (mode === "signin") {
-        console.log("User signing in with email:", email);
+        console.log("🔐 Calling signInWithEmail for:", email);
         await signInWithEmail(email, password);
-        console.log("Sign in successful - root layout will handle navigation");
+        console.log("✅ Sign in successful - root layout will handle navigation");
       } else {
-        console.log("User signing up with email:", email, "name:", name || "(none)");
+        console.log("📝 Calling signUpWithEmail for:", email, "name:", name || "(none)");
         await signUpWithEmail(email, password, name || undefined);
-        console.log("Sign up successful - root layout will redirect to email verification");
+        console.log("✅ Sign up successful - root layout will redirect to email verification");
       }
     } catch (error: any) {
-      console.error("Authentication error:", error);
+      console.error("❌ Authentication error:", error);
       const errorMsg = error.message || error.toString() || "Authentication failed";
       showError(errorMsg);
     } finally {
@@ -138,7 +144,7 @@ export default function AuthScreen() {
   };
 
   const handleForgotPassword = async () => {
-    console.log("User tapped forgot password");
+    console.log("🔵 User tapped forgot password");
     
     if (!email) {
       showError("Please enter your email address to reset your password.");
@@ -151,7 +157,7 @@ export default function AuthScreen() {
       showError("If an account exists for this email, we've sent a reset link. Please check your inbox.");
       setMode("signin");
     } catch (error: any) {
-      console.error("Forgot password error:", error);
+      console.error("❌ Forgot password error:", error);
       showError("Failed to send password reset email. Please try again.");
     } finally {
       setLoading(false);
@@ -159,27 +165,28 @@ export default function AuthScreen() {
   };
 
   const handleSocialAuth = async (provider: "google" | "apple") => {
-    console.log("User tapped social auth button - provider:", provider);
+    console.log("🔵 User tapped social auth button - provider:", provider);
+    console.log("🔵 Platform:", Platform.OS);
     setOauthLoading(true);
     
     // Set a timeout to prevent getting stuck on loading screen
     const timeoutId = setTimeout(() => {
-      console.log("OAuth timeout - resetting loading state");
+      console.log("⏱️ OAuth timeout - resetting loading state");
       setOauthLoading(false);
       showError("The authentication process is taking longer than expected. Please try again or use email sign in.");
     }, 30000); // 30 second timeout
     
     try {
-      console.log("Starting", provider, "sign in flow");
+      console.log("🚀 Starting", provider, "sign in flow");
       if (provider === "google") {
         await signInWithGoogle();
       } else if (provider === "apple") {
         await signInWithApple();
       }
-      console.log("Social auth initiated");
+      console.log("✅ Social auth initiated");
       clearTimeout(timeoutId);
     } catch (error: any) {
-      console.error("Social auth error:", error);
+      console.error("❌ Social auth error:", error);
       clearTimeout(timeoutId);
       setOauthLoading(false);
       const errorMsg = error.message || error.toString() || "Authentication failed";
@@ -192,21 +199,21 @@ export default function AuthScreen() {
   };
 
   const handleSwitchMode = () => {
-    console.log("User tapped switch mode button - current mode:", mode);
+    console.log("🔵 User tapped switch mode button - current mode:", mode);
     const newMode = mode === "signin" ? "signup" : "signin";
     setMode(newMode);
     setPasswordError("");
     setConfirmPasswordError("");
-    console.log("Switched to mode:", newMode);
+    console.log("✅ Switched to mode:", newMode);
   };
 
   const handleOpenTerms = () => {
-    console.log("User tapped Terms of Service link");
+    console.log("🔵 User tapped Terms of Service link");
     Linking.openURL("https://putmeon.app/terms");
   };
 
   const handleOpenPrivacy = () => {
-    console.log("User tapped Privacy Policy link");
+    console.log("🔵 User tapped Privacy Policy link");
     Linking.openURL("https://putmeon.app/privacy");
   };
 
@@ -255,7 +262,7 @@ export default function AuthScreen() {
 
   const isFormValid = mode === "signup" ? isSignupValid : (email && password);
   
-  console.log("AuthScreen: Rendering auth screen - mode:", mode, "loading:", loading, "oauthLoading:", oauthLoading);
+  console.log("🎨 AuthScreen: Rendering auth screen - mode:", mode, "loading:", loading, "oauthLoading:", oauthLoading);
 
   // Show OAuth loading state with cancel button
   if (oauthLoading) {
@@ -266,7 +273,7 @@ export default function AuthScreen() {
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => {
-            console.log("User cancelled OAuth loading");
+            console.log("🔵 User cancelled OAuth loading");
             setOauthLoading(false);
           }}
         >
@@ -309,6 +316,7 @@ export default function AuthScreen() {
               style={[styles.primaryButton, loading && styles.buttonDisabled]}
               onPress={handleForgotPassword}
               disabled={loading}
+              activeOpacity={0.7}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
@@ -319,8 +327,12 @@ export default function AuthScreen() {
 
             <TouchableOpacity
               style={styles.switchModeButton}
-              onPress={() => setMode("signin")}
+              onPress={() => {
+                console.log("🔵 User tapped back to sign in");
+                setMode("signin");
+              }}
               disabled={loading}
+              activeOpacity={0.7}
             >
               <Text style={styles.switchModeText}>{backToSignInText}</Text>
             </TouchableOpacity>
@@ -340,7 +352,11 @@ export default function AuthScreen() {
               <Text style={styles.modalMessage}>{errorMessage}</Text>
               <TouchableOpacity
                 style={styles.modalButton}
-                onPress={() => setErrorModalVisible(false)}
+                onPress={() => {
+                  console.log("🔵 User dismissed error modal");
+                  setErrorModalVisible(false);
+                }}
+                activeOpacity={0.7}
               >
                 <Text style={styles.modalButtonText}>OK</Text>
               </TouchableOpacity>
@@ -424,8 +440,12 @@ export default function AuthScreen() {
           {mode === "signin" && (
             <TouchableOpacity
               style={styles.forgotPasswordButton}
-              onPress={() => setMode("forgot-password")}
+              onPress={() => {
+                console.log("🔵 User tapped forgot password link");
+                setMode("forgot-password");
+              }}
               disabled={loading}
+              activeOpacity={0.7}
             >
               <Text style={styles.forgotPasswordText}>{forgotPasswordText}</Text>
             </TouchableOpacity>
@@ -438,6 +458,7 @@ export default function AuthScreen() {
             ]}
             onPress={handleEmailAuth}
             disabled={loading || (mode === "signup" && !isFormValid)}
+            activeOpacity={0.7}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -450,6 +471,7 @@ export default function AuthScreen() {
             style={styles.switchModeButton}
             onPress={handleSwitchMode}
             disabled={loading}
+            activeOpacity={0.7}
           >
             <Text style={styles.switchModeText}>{switchModeText}</Text>
           </TouchableOpacity>
@@ -462,8 +484,12 @@ export default function AuthScreen() {
 
           <TouchableOpacity
             style={[styles.socialButton, loading && styles.buttonDisabled]}
-            onPress={() => handleSocialAuth("google")}
+            onPress={() => {
+              console.log("🔵 Google button pressed");
+              handleSocialAuth("google");
+            }}
             disabled={loading}
+            activeOpacity={0.7}
           >
             <Text style={styles.socialButtonText}>{googleButtonText}</Text>
           </TouchableOpacity>
@@ -471,8 +497,12 @@ export default function AuthScreen() {
           {Platform.OS === "ios" && (
             <TouchableOpacity
               style={[styles.socialButton, styles.appleButton, loading && styles.buttonDisabled]}
-              onPress={() => handleSocialAuth("apple")}
+              onPress={() => {
+                console.log("🔵 Apple button pressed");
+                handleSocialAuth("apple");
+              }}
               disabled={loading}
+              activeOpacity={0.7}
             >
               <Text style={[styles.socialButtonText, styles.appleButtonText]}>
                 {appleButtonText}
@@ -482,11 +512,11 @@ export default function AuthScreen() {
 
           <View style={styles.termsContainer}>
             <Text style={styles.termsText}>{termsText}</Text>
-            <TouchableOpacity onPress={handleOpenTerms}>
+            <TouchableOpacity onPress={handleOpenTerms} activeOpacity={0.7}>
               <Text style={styles.termsLink}>{termsLinkText}</Text>
             </TouchableOpacity>
             <Text style={styles.termsText}>{andText}</Text>
-            <TouchableOpacity onPress={handleOpenPrivacy}>
+            <TouchableOpacity onPress={handleOpenPrivacy} activeOpacity={0.7}>
               <Text style={styles.termsLink}>{privacyLinkText}</Text>
             </TouchableOpacity>
           </View>
@@ -506,7 +536,11 @@ export default function AuthScreen() {
             <Text style={styles.modalMessage}>{errorMessage}</Text>
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => setErrorModalVisible(false)}
+              onPress={() => {
+                console.log("🔵 User dismissed error modal");
+                setErrorModalVisible(false);
+              }}
+              activeOpacity={0.7}
             >
               <Text style={styles.modalButtonText}>OK</Text>
             </TouchableOpacity>
