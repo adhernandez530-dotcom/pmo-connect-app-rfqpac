@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.pmoconnect.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "appleTeamId": "YOUR_CORRECT_TEAM_ID_HERE"
     },
     "android": {
       "adaptiveIcon": {
