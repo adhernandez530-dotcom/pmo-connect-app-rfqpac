@@ -63,15 +63,38 @@ export const apiCall = async <T = any>(
     if (!response.ok) {
       const text = await response.text();
       console.error("[API] Error response:", response.status, text);
-      throw new Error(`API error: ${response.status} - ${text}`);
+      
+      // Parse error message from response
+      let errorMessage = `API error: ${response.status}`;
+      try {
+        const errorData = JSON.parse(text);
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (e) {
+        // If parsing fails, use the text as is
+        if (text) {
+          errorMessage = text;
+        }
+      }
+      
+      throw new Error(`API error: ${response.status} - ${errorMessage}`);
     }
 
     const data = await response.json();
     console.log("[API] Success:", data);
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("[API] Request failed:", error);
-    throw error;
+    
+    // Re-throw with better error message
+    if (error.message) {
+      throw error;
+    } else {
+      throw new Error("Network request failed. Please check your connection.");
+    }
   }
 };
 
@@ -157,11 +180,15 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> => {
+  // Check for session
   const session = await authClient.getSession();
 
   if (!session?.data?.session) {
+    console.error("[API] No authentication session found");
     throw new Error("Authentication session not found. Please sign in.");
   }
+
+  console.log("[API] Session found, making authenticated request");
 
   // Check if body is FormData to avoid setting Content-Type
   const isFormData = options?.body instanceof FormData;
@@ -270,6 +297,7 @@ export const authenticatedFetch = async (
   const session = await authClient.getSession();
 
   if (!session?.data?.session) {
+    console.error("[API] No authentication session found for fetch");
     throw new Error("Authentication session not found. Please sign in.");
   }
 

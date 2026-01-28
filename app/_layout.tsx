@@ -53,6 +53,9 @@ function RootLayoutNav() {
     try {
       const { authenticatedGet } = await import("@/utils/api");
       
+      // Add a small delay to ensure session cookies are set
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Check if user profile exists
       const profileCheck = await authenticatedGet("/api/init/profile-exists");
       console.log("RootLayout: Profile exists check:", profileCheck.exists);
@@ -66,11 +69,20 @@ function RootLayoutNav() {
         console.log("RootLayout: Profile exists, redirecting to home");
         router.replace("/(tabs)/(home)");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("RootLayout: Error checking onboarding status:", error);
-      // If we can't check, assume onboarding is needed
-      setOnboardingChecked(true);
-      router.replace("/onboarding");
+      
+      // If we get a 401 error, it means the session is not established yet
+      // This can happen right after sign-up or sign-in
+      if (error?.message?.includes("401") || error?.message?.includes("Unauthorized")) {
+        console.log("RootLayout: Session not established yet, assuming onboarding needed");
+        setOnboardingChecked(true);
+        router.replace("/onboarding");
+      } else {
+        // For other errors, assume onboarding is needed
+        setOnboardingChecked(true);
+        router.replace("/onboarding");
+      }
     }
   }, [user, router]);
 
@@ -82,7 +94,7 @@ function RootLayoutNav() {
     }
 
     const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
-    const inVerifyEmail = segments[0] === "verify-email";
+    const inVerifyEmail = segments[0] === "verify-email" || segments[0] === "verify-email-callback";
     const inOnboarding = segments[0] === "onboarding";
     const inTabs = segments[0] === "(tabs)";
 
@@ -220,6 +232,10 @@ function RootLayoutNav() {
               <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
               {/* Terms of Service screen */}
               <Stack.Screen name="terms-of-service" options={{ headerShown: false }} />
+              {/* Create post screen */}
+              <Stack.Screen name="create-post" options={{ headerShown: false }} />
+              {/* Drafts screen */}
+              <Stack.Screen name="drafts" options={{ headerShown: false }} />
             </Stack>
             <SystemBars style={"auto"} />
             </GestureHandlerRootView>
