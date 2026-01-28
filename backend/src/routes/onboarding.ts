@@ -18,8 +18,25 @@ export function registerOnboardingRoutes(app: App) {
   app.fastify.post(
     '/api/onboarding/complete',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      app.logger.info(
+        {
+          method: request.method,
+          path: request.url,
+          bodyProvided: !!request.body,
+        },
+        'Onboarding request received'
+      );
+
       const session = await requireAuth(request, reply);
-      if (!session) return;
+      if (!session) {
+        app.logger.warn(
+          {
+            path: request.url,
+          },
+          'Authentication failed - no session returned from requireAuth'
+        );
+        return;
+      }
 
       const { username, fullName, location, bio, phoneNumber, allowContacts } = request.body as {
         username: string;
@@ -29,6 +46,11 @@ export function registerOnboardingRoutes(app: App) {
         phoneNumber?: string;
         allowContacts?: boolean;
       };
+
+      app.logger.info(
+        { userId: session.user.id, username, bodyKeys: Object.keys(request.body as any || {}) },
+        'Request body parsed'
+      );
 
       app.logger.info({ userId: session.user.id, username }, 'Completing onboarding');
 
@@ -87,7 +109,7 @@ export function registerOnboardingRoutes(app: App) {
         }
 
         app.logger.info(
-          { userId: session.user.id, username },
+          { userId: session.user.id, username, profileId: profile[0].id },
           'Onboarding completed successfully'
         );
 
@@ -125,6 +147,45 @@ export function registerOnboardingRoutes(app: App) {
       } catch (error) {
         app.logger.error({ err: error, username }, 'Failed to check username');
         throw error;
+      }
+    }
+  );
+
+  /**
+   * GET /api/onboarding/debug
+   * Debug endpoint to check authentication status and session info
+   * Requires authentication to see which session is being used
+   */
+  app.fastify.get(
+    '/api/onboarding/debug',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      app.logger.info(
+        {
+          method: request.method,
+          path: request.url,
+        },
+        'Onboarding debug endpoint accessed'
+      );
+
+      try {
+        const session = await requireAuth(request, reply);
+        if (!session) {
+          app.logger.warn('Debug: No session found');
+          return { authenticated: false, message: 'No valid session' };
+        }
+
+        app.logger.info({ userId: session.user.id }, 'Debug: Session authenticated');
+
+        return {
+          authenticated: true,
+          userId: session.user.id,
+          userEmail: session.user.email,
+          sessionId: session.session?.id,
+          message: 'Session is valid and can be used for onboarding',
+        };
+      } catch (error) {
+        app.logger.error({ err: error }, 'Debug endpoint error');
+        return { authenticated: false, error: String(error) };
       }
     }
   );
