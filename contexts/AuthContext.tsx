@@ -187,26 +187,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // On web, Better Auth will redirect the current page to the OAuth provider
         // The callback URL will bring the user back to the app with the session set
         try {
-          console.log("🌐 AuthContext: Calling authClient.signIn.social...");
-          await authClient.signIn.social({
+          console.log("🌐 AuthContext: Calling authClient.signIn.social with provider:", provider);
+          const result = await authClient.signIn.social({
             provider,
             callbackURL: window.location.origin + "/auth-callback",
           });
           
-          console.log("✅ AuthContext: OAuth redirect initiated successfully");
+          console.log("✅ AuthContext: OAuth redirect initiated successfully, result:", result);
           // Note: The page will redirect, so code after this won't execute
         } catch (redirectError: any) {
           console.error("❌ AuthContext: OAuth redirect failed:", redirectError);
           console.error("❌ AuthContext: Error type:", typeof redirectError);
           console.error("❌ AuthContext: Error keys:", Object.keys(redirectError || {}));
+          console.error("❌ AuthContext: Error message:", redirectError?.message);
+          console.error("❌ AuthContext: Error status:", redirectError?.status);
           throw redirectError;
         }
       } else {
         console.log("📱 AuthContext: Native platform detected - starting native OAuth flow");
-        await authClient.signIn.social({
+        const result = await authClient.signIn.social({
           provider,
           callbackURL: "/",
         });
+        
+        console.log("📱 AuthContext: Native OAuth result:", result);
         
         // Fetch user session after successful social sign in
         await fetchUser();
@@ -217,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("❌ AuthContext: Error type:", typeof error);
       console.error("❌ AuthContext: Error message:", error?.message);
       console.error("❌ AuthContext: Error status:", error?.status);
+      console.error("❌ AuthContext: Error response:", error?.response);
       console.error("❌ AuthContext: Full error details:", JSON.stringify(error, null, 2));
       
       // Extract meaningful error message with better context
@@ -230,14 +235,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         errorMessage = `${providerName} authentication failed. Please check your ${providerName} account settings.`;
       } else if (error?.status === 404 || error?.message?.includes("404") || error?.message?.includes("not found")) {
         errorMessage = `${providerName} sign in is not available yet. The authentication service is being set up. Please try email sign in or wait a moment.`;
+      } else if (error?.status === 500 || error?.message?.includes("500") || error?.message?.includes("Internal Server Error")) {
+        errorMessage = `${providerName} sign in encountered a server error. The OAuth provider may not be configured yet. Please try email sign in or contact support.`;
       } else if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
         // Don't show error for user cancellation
         console.log("ℹ️ AuthContext: User cancelled OAuth flow");
         return;
-      } else if (error?.message?.includes("popup")) {
+      } else if (error?.message?.includes("popup") || error?.message?.includes("blocked")) {
         errorMessage = `Please allow popups in your browser to sign in with ${providerName}.`;
       } else if (error?.message?.includes("network") || error?.message?.includes("fetch") || error?.message?.includes("Failed to fetch")) {
         errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (error?.message?.includes("redirect")) {
+        errorMessage = `${providerName} OAuth redirect failed. The provider may not be configured correctly. Please try email sign in.`;
       } else if (error?.body?.message) {
         errorMessage = error.body.message;
       } else if (error?.message) {

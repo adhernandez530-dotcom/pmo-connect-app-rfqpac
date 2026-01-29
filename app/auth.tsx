@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Modal,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiGet } from "@/utils/api";
 
 type Mode = "signin" | "signup" | "forgot-password";
 
@@ -41,6 +42,46 @@ export default function AuthScreen() {
   // Error modal state
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  
+  // OAuth config state
+  const [oauthConfigChecked, setOauthConfigChecked] = useState(false);
+  const [oauthConfig, setOauthConfig] = useState<any>(null);
+
+  // Check OAuth configuration on mount
+  useEffect(() => {
+    const checkOAuthConfig = async () => {
+      try {
+        console.log("🔍 Checking OAuth configuration...");
+        const config = await apiGet("/api/oauth/config");
+        console.log("✅ OAuth config:", config);
+        setOauthConfig(config);
+        setOauthConfigChecked(true);
+        
+        // Also log additional OAuth debug info in development
+        if (__DEV__) {
+          try {
+            const status = await apiGet("/api/oauth/status");
+            console.log("📊 OAuth status:", status);
+            
+            const providers = await apiGet("/api/oauth/providers");
+            console.log("🔌 OAuth providers:", providers);
+            
+            const callbackUrls = await apiGet("/api/oauth/callback-urls");
+            console.log("🔗 OAuth callback URLs:", callbackUrls);
+          } catch (debugError) {
+            console.log("ℹ️ OAuth debug endpoints not available:", debugError);
+          }
+        }
+      } catch (error) {
+        console.error("❌ Failed to check OAuth config:", error);
+        // If endpoint doesn't exist, assume OAuth is not configured
+        setOauthConfig({ google: { enabled: false }, apple: { enabled: false } });
+        setOauthConfigChecked(true);
+      }
+    };
+    
+    checkOAuthConfig();
+  }, []);
 
   // Show loading screen while checking auth state
   if (authLoading) {
@@ -166,6 +207,15 @@ export default function AuthScreen() {
   const handleSocialAuth = async (provider: "google" | "apple") => {
     console.log("🔵 User tapped social auth button - provider:", provider);
     console.log("🔵 Platform:", Platform.OS);
+    console.log("🔵 OAuth config:", oauthConfig);
+    
+    // Check if OAuth is configured
+    if (oauthConfig && !oauthConfig[provider]?.enabled) {
+      console.log("⚠️ OAuth provider not configured:", provider);
+      showError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in is not configured yet. Please use email sign-in or contact support to enable ${provider.charAt(0).toUpperCase() + provider.slice(1)} authentication.`);
+      return;
+    }
+    
     setOauthLoading(true);
     
     // Set a timeout to prevent getting stuck on loading screen
@@ -214,6 +264,24 @@ export default function AuthScreen() {
   const handleOpenPrivacy = () => {
     console.log("🔵 User tapped Privacy Policy link");
     Linking.openURL("https://putmeon.app/privacy");
+  };
+
+  const handleOAuthTroubleshoot = async () => {
+    console.log("🔵 User tapped OAuth Troubleshoot button");
+    setLoading(true);
+    try {
+      const troubleshoot = await apiGet("/api/oauth/troubleshoot");
+      console.log("🔧 OAuth troubleshoot results:", troubleshoot);
+      
+      // Format the troubleshoot data for display
+      const message = JSON.stringify(troubleshoot, null, 2);
+      showError(`OAuth Troubleshoot Results:\n\n${message}`);
+    } catch (error: any) {
+      console.error("❌ OAuth troubleshoot failed:", error);
+      showError("Failed to run OAuth troubleshoot. Check console for details.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const titleText = mode === "signin" 
@@ -470,30 +538,42 @@ export default function AuthScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.socialButton, loading && styles.buttonDisabled]}
+            style={[styles.socialButton, (loading || oauthLoading) && styles.buttonDisabled]}
             onPress={() => {
-              console.log("🔵 Google button pressed");
+              console.log("🔵 Google button pressed - starting OAuth flow");
+              console.log("🔵 OAuth config:", oauthConfig);
               handleSocialAuth("google");
             }}
-            disabled={loading}
+            disabled={loading || oauthLoading}
             activeOpacity={0.7}
           >
-            <Text style={styles.socialButtonText}>{googleButtonText}</Text>
+            <View style={styles.socialButtonContent}>
+              <Text style={styles.socialButtonText}>{googleButtonText}</Text>
+              {oauthConfigChecked && oauthConfig?.google && !oauthConfig.google.enabled && (
+                <Text style={styles.configWarning}> (Setup required)</Text>
+              )}
+            </View>
           </TouchableOpacity>
 
           {Platform.OS === "ios" && (
             <TouchableOpacity
-              style={[styles.socialButton, styles.appleButton, loading && styles.buttonDisabled]}
+              style={[styles.socialButton, styles.appleButton, (loading || oauthLoading) && styles.buttonDisabled]}
               onPress={() => {
-                console.log("🔵 Apple button pressed");
+                console.log("🔵 Apple button pressed - starting OAuth flow");
+                console.log("🔵 OAuth config:", oauthConfig);
                 handleSocialAuth("apple");
               }}
-              disabled={loading}
+              disabled={loading || oauthLoading}
               activeOpacity={0.7}
             >
-              <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                {appleButtonText}
-              </Text>
+              <View style={styles.socialButtonContent}>
+                <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+                  {appleButtonText}
+                </Text>
+                {oauthConfigChecked && oauthConfig?.apple && !oauthConfig.apple.enabled && (
+                  <Text style={[styles.configWarning, { color: "#fff" }]}> (Setup required)</Text>
+                )}
+              </View>
             </TouchableOpacity>
           )}
 
@@ -507,6 +587,18 @@ export default function AuthScreen() {
               <Text style={styles.termsLink}>{privacyLinkText}</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Developer OAuth Troubleshoot Button (only in dev mode) */}
+          {__DEV__ && (
+            <TouchableOpacity
+              style={styles.troubleshootButton}
+              onPress={handleOAuthTroubleshoot}
+              disabled={loading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.troubleshootButtonText}>🔧 OAuth Troubleshoot (Dev Only)</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -679,6 +771,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: "#fff",
   },
+  socialButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   socialButtonText: {
     fontSize: 16,
     color: "#000",
@@ -753,5 +850,24 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  configWarning: {
+    fontSize: 12,
+    color: "#ff9500",
+    fontStyle: "italic",
+  },
+  troubleshootButton: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    alignItems: "center",
+  },
+  troubleshootButtonText: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
   },
 });

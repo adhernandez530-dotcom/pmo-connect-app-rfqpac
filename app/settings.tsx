@@ -1,11 +1,11 @@
 
-import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, Modal } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, Modal, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useAuth } from "@/contexts/AuthContext";
-import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
+import { authenticatedFetch, BACKEND_URL, apiGet } from "@/utils/api";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -16,6 +16,31 @@ export default function SettingsScreen() {
   const [verificationCode, setVerificationCode] = useState("");
   const [isRequestingCode, setIsRequestingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  
+  // OAuth status (only in dev mode)
+  const [oauthStatus, setOauthStatus] = useState<any>(null);
+  const [loadingOAuthStatus, setLoadingOAuthStatus] = useState(false);
+
+  // Load OAuth status in development mode
+  useEffect(() => {
+    if (__DEV__) {
+      loadOAuthStatus();
+    }
+  }, []);
+
+  const loadOAuthStatus = async () => {
+    console.log('SettingsScreen: Loading OAuth status (dev mode)');
+    setLoadingOAuthStatus(true);
+    try {
+      const config = await apiGet('/api/oauth/config');
+      console.log('SettingsScreen: OAuth config:', config);
+      setOauthStatus(config);
+    } catch (error) {
+      console.error('SettingsScreen: Failed to load OAuth status:', error);
+    } finally {
+      setLoadingOAuthStatus(false);
+    }
+  };
 
   const handleLogout = () => {
     console.log('SettingsScreen: User tapped Logout button');
@@ -226,6 +251,84 @@ export default function SettingsScreen() {
         }}
       />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* OAuth Status Section (Dev Mode Only) */}
+        {__DEV__ && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🔧 OAuth Status (Dev Only)</Text>
+            {loadingOAuthStatus ? (
+              <View style={styles.oauthStatusCard}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.oauthStatusText}>Loading OAuth status...</Text>
+              </View>
+            ) : oauthStatus ? (
+              <View style={styles.oauthStatusCard}>
+                <View style={styles.oauthProviderRow}>
+                  <Text style={styles.oauthProviderLabel}>Google OAuth:</Text>
+                  <View style={styles.oauthStatusBadge}>
+                    <IconSymbol
+                      ios_icon_name={oauthStatus.google?.enabled ? "checkmark.circle.fill" : "xmark.circle.fill"}
+                      android_material_icon_name={oauthStatus.google?.enabled ? "check-circle" : "cancel"}
+                      size={16}
+                      color={oauthStatus.google?.enabled ? "#34C759" : "#FF3B30"}
+                    />
+                    <Text style={[
+                      styles.oauthStatusText,
+                      { color: oauthStatus.google?.enabled ? "#34C759" : "#FF3B30" }
+                    ]}>
+                      {oauthStatus.google?.enabled ? "Enabled" : "Disabled"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.oauthProviderRow}>
+                  <Text style={styles.oauthProviderLabel}>Apple OAuth:</Text>
+                  <View style={styles.oauthStatusBadge}>
+                    <IconSymbol
+                      ios_icon_name={oauthStatus.apple?.enabled ? "checkmark.circle.fill" : "xmark.circle.fill"}
+                      android_material_icon_name={oauthStatus.apple?.enabled ? "check-circle" : "cancel"}
+                      size={16}
+                      color={oauthStatus.apple?.enabled ? "#34C759" : "#FF3B30"}
+                    />
+                    <Text style={[
+                      styles.oauthStatusText,
+                      { color: oauthStatus.apple?.enabled ? "#34C759" : "#FF3B30" }
+                    ]}>
+                      {oauthStatus.apple?.enabled ? "Enabled" : "Disabled"}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={loadOAuthStatus}
+                >
+                  <IconSymbol
+                    ios_icon_name="arrow.clockwise"
+                    android_material_icon_name="refresh"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.refreshButtonText}>Refresh Status</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.oauthStatusCard}>
+                <Text style={styles.oauthStatusText}>Failed to load OAuth status</Text>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={loadOAuthStatus}
+                >
+                  <IconSymbol
+                    ios_icon_name="arrow.clockwise"
+                    android_material_icon_name="refresh"
+                    size={16}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.refreshButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{accountSectionTitle}</Text>
           
@@ -571,5 +674,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.background,
+  },
+  oauthStatusCard: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  oauthProviderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  oauthProviderLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  oauthStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  oauthStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });
