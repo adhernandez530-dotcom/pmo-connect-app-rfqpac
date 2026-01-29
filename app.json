@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "PMO Connect",
@@ -17,8 +18,7 @@
       "bundleIdentifier": "com.pmoconnect.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "appleTeamId": "44493K2G8U"
+      }
     },
     "android": {
       "adaptiveIcon": {
