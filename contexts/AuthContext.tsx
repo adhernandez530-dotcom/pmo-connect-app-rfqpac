@@ -177,29 +177,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithSocial = async (provider: "google" | "apple") => {
     try {
-      console.log("AuthContext: Signing in with", provider, "on platform:", Platform.OS);
+      console.log("🚀 AuthContext: Starting", provider, "sign in on platform:", Platform.OS);
+      console.log("🚀 AuthContext: Current URL:", Platform.OS === "web" ? window.location.href : "N/A");
       
       if (Platform.OS === "web") {
-        console.log("AuthContext: Initiating", provider, "OAuth flow on web");
+        console.log("🌐 AuthContext: Web platform detected - initiating OAuth redirect");
+        console.log("🌐 AuthContext: Callback URL will be:", window.location.origin + "/auth-callback");
         
         // On web, Better Auth will redirect the current page to the OAuth provider
         // The callback URL will bring the user back to the app with the session set
-        await authClient.signIn.social({
-          provider,
-          callbackURL: window.location.origin + "/",
-        });
-        
-        // Note: The page will redirect, so code after this won't execute
-        console.log("AuthContext: OAuth redirect initiated");
-        
-        // After redirect back, check for session
-        // This will be called when the page loads after OAuth callback
-        setTimeout(async () => {
-          console.log("AuthContext: Checking for session after OAuth redirect");
-          await fetchUser();
-        }, 1000);
+        try {
+          console.log("🌐 AuthContext: Calling authClient.signIn.social...");
+          await authClient.signIn.social({
+            provider,
+            callbackURL: window.location.origin + "/auth-callback",
+          });
+          
+          console.log("✅ AuthContext: OAuth redirect initiated successfully");
+          // Note: The page will redirect, so code after this won't execute
+        } catch (redirectError: any) {
+          console.error("❌ AuthContext: OAuth redirect failed:", redirectError);
+          console.error("❌ AuthContext: Error type:", typeof redirectError);
+          console.error("❌ AuthContext: Error keys:", Object.keys(redirectError || {}));
+          throw redirectError;
+        }
       } else {
-        console.log("AuthContext: Starting native OAuth flow for", provider);
+        console.log("📱 AuthContext: Native platform detected - starting native OAuth flow");
         await authClient.signIn.social({
           provider,
           callbackURL: "/",
@@ -207,11 +210,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Fetch user session after successful social sign in
         await fetchUser();
-        console.log("AuthContext:", provider, "sign in successful");
+        console.log("✅ AuthContext:", provider, "sign in successful on native");
       }
     } catch (error: any) {
-      console.error(`AuthContext: ${provider} sign in failed:`, error);
-      console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));
+      console.error(`❌ AuthContext: ${provider} sign in failed:`, error);
+      console.error("❌ AuthContext: Error type:", typeof error);
+      console.error("❌ AuthContext: Error message:", error?.message);
+      console.error("❌ AuthContext: Error status:", error?.status);
+      console.error("❌ AuthContext: Full error details:", JSON.stringify(error, null, 2));
       
       // Extract meaningful error message with better context
       const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
@@ -226,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         errorMessage = `${providerName} sign in is not available yet. The authentication service is being set up. Please try email sign in or wait a moment.`;
       } else if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
         // Don't show error for user cancellation
-        console.log("AuthContext: User cancelled OAuth flow");
+        console.log("ℹ️ AuthContext: User cancelled OAuth flow");
         return;
       } else if (error?.message?.includes("popup")) {
         errorMessage = `Please allow popups in your browser to sign in with ${providerName}.`;
@@ -242,8 +248,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = () => signInWithSocial("google");
-  const signInWithApple = () => signInWithSocial("apple");
+  const signInWithGoogle = () => {
+    console.log("🔵 AuthContext: signInWithGoogle called");
+    return signInWithSocial("google");
+  };
+  
+  const signInWithApple = () => {
+    console.log("🔵 AuthContext: signInWithApple called");
+    return signInWithSocial("apple");
+  };
 
   const forgotPassword = async (email: string) => {
     try {
