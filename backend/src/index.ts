@@ -36,24 +36,39 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
+// ============================================================================
+// AUTHENTICATION CONFIGURATION
+// ============================================================================
+
 // Configure social providers with Google, Apple, and GitHub OAuth
 // Note: Credentials can be provided via environment variables for custom OAuth
 // If not provided, the framework uses a proxy service for social authentication
+const googleEnabled = !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+const appleEnabled = !!process.env.APPLE_CLIENT_ID && !!process.env.APPLE_CLIENT_SECRET;
+const githubEnabled = !!process.env.GITHUB_CLIENT_ID && !!process.env.GITHUB_CLIENT_SECRET;
+
 const authConfig: any = {
+  // Base URL for callbacks (used by OAuth providers)
+  baseURL: process.env.BASE_URL || 'http://localhost:5000',
+
+  // Trusted origins for CORS and session validation
+  trustedOrigins: (process.env.TRUSTED_ORIGINS || 'http://localhost:3000,http://localhost:5173').split(',').map(url => url.trim()),
+
+  // Social provider OAuth credentials
   socialProviders: {
-    google: process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    google: googleEnabled
       ? {
           clientId: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         }
       : undefined,
-    apple: process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET
+    apple: appleEnabled
       ? {
           clientId: process.env.APPLE_CLIENT_ID,
           clientSecret: process.env.APPLE_CLIENT_SECRET,
         }
       : undefined,
-    github: process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+    github: githubEnabled
       ? {
           clientId: process.env.GITHUB_CLIENT_ID,
           clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -62,15 +77,21 @@ const authConfig: any = {
   },
 };
 
-// Enable authentication with social providers
+// Enable authentication with social providers and configuration
 app.withAuth(authConfig);
 
 // Log authentication configuration
 app.logger.info(
   {
-    googleConfigured: !!authConfig.socialProviders.google,
-    appleConfigured: !!authConfig.socialProviders.apple,
-    githubConfigured: !!authConfig.socialProviders.github,
+    baseURL: authConfig.baseURL,
+    trustedOrigins: authConfig.trustedOrigins,
+    googleConfigured: googleEnabled,
+    googleMethod: googleEnabled ? 'custom' : 'proxy',
+    appleConfigured: appleEnabled,
+    appleMethod: appleEnabled ? 'custom' : 'proxy',
+    githubConfigured: githubEnabled,
+    githubMethod: githubEnabled ? 'custom' : 'proxy',
+    proxyServiceAvailable: true,
     message: 'OAuth providers configured. If credentials are not set, framework uses proxy service.',
   },
   'Authentication configured'
