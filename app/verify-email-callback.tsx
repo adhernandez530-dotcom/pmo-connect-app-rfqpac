@@ -30,8 +30,46 @@ export default function VerifyEmailCallbackScreen() {
       return;
     }
 
+    const handleVerification = async () => {
+      try {
+        console.log("VerifyEmailCallback: Verifying email with token");
+        
+        // Call backend to verify email
+        await apiCall(`/api/auth/verify-email/${token}`, {
+          method: "GET",
+        });
+
+        console.log("VerifyEmailCallback: Email verified successfully");
+        setStatus("success");
+        setMessage("Email verified successfully! You can now access all features.");
+
+        // Refresh user session to get updated emailVerified status
+        await fetchUser();
+
+        // Redirect to home after 2 seconds
+        setTimeout(() => {
+          router.replace("/(tabs)/(home)");
+        }, 2000);
+      } catch (error: any) {
+        console.error("VerifyEmailCallback: Verification failed:", error);
+        
+        let errorMessage = "Failed to verify email. Please try again.";
+        
+        if (error?.message?.includes("expired") || error?.message?.includes("invalid")) {
+          errorMessage = "This verification link has expired or is invalid. Please request a new one.";
+        } else if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+
+        setStatus("error");
+        setMessage(errorMessage);
+      }
+    };
+
     handleVerification();
-  }, [token]);
+  }, [token, fetchUser, router]);
 
   const handleVerification = async () => {
     try {
