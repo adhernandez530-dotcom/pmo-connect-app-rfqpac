@@ -538,12 +538,7 @@ export default function AuthScreen() {
           )}
 
           <TouchableOpacity
-            style={[
-              styles.primaryButton, 
-              (loading || (mode === "signup" && !isFormValid)) && styles.buttonDisabled
-            ]}
-            onPress={handleEmailAuth}
-            disabled={loading || (mode === "signup" && !isFormValid)}
+   bled={loading || (mode === "signup" && !isFormValid)}
             activeOpacity={0.7}
           >
             {loading ? (
