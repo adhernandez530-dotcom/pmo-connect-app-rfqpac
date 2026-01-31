@@ -25,6 +25,9 @@
         "NSLocationWhenInUseUsageDescription": "Allow PMO Connect to use your location to show nearby users and services.",
         "NSContactsUsageDescription": "Allow PMO Connect to access your contacts to help you find friends on the platform.",
         "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized content and improve your experience."
+      },
+      "entitlements": {
+        "com.apple.developer.homekit": true
       }
     },
     "android": {
