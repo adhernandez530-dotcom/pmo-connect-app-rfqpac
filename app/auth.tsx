@@ -2,9 +2,55 @@
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 
-export default function WelcomeScreen({ navigation }: any) {
+export default function WelcomeScreen() {
   const { signInWithGoogle, signInWithApple } = useAuth();
+  const router = useRouter();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    console.log("WelcomeScreen: User tapped Continue with Google");
+    setIsGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("WelcomeScreen: Google sign in error:", error);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    console.log("WelcomeScreen: User tapped Continue with Apple");
+    setIsAppleLoading(true);
+    try {
+      await signInWithApple();
+    } catch (error) {
+      console.error("WelcomeScreen: Apple sign in error:", error);
+    } finally {
+      setIsAppleLoading(false);
+    }
+  };
+
+  const handleEmailSignUp = () => {
+    console.log("WelcomeScreen: User tapped Sign up with Email");
+    // TODO: Create email sign up screen at app/email-signup.tsx
+    // For now, show a message
+    console.log("WelcomeScreen: Email sign up not yet implemented");
+  };
+
+  const handleEmailSignIn = () => {
+    console.log("WelcomeScreen: User tapped Sign in with Email");
+    // TODO: Create email sign in screen at app/email-signin.tsx
+    // For now, show a message
+    console.log("WelcomeScreen: Email sign in not yet implemented");
+  };
+
+  const googleButtonText = isGoogleLoading ? "Signing in..." : "Continue with Google";
+  const appleButtonText = isAppleLoading ? "Signing in..." : "Continue with Apple";
 
   return (
     <View style={styles.container}>
@@ -15,23 +61,31 @@ export default function WelcomeScreen({ navigation }: any) {
         Discover what your friends are into.
       </Text>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={signInWithGoogle}>
-        <Text style={styles.primaryText}>Continue with Google</Text>
+      <TouchableOpacity 
+        style={[styles.primaryButton, isGoogleLoading && styles.buttonDisabled]} 
+        onPress={handleGoogleSignIn}
+        disabled={isGoogleLoading || isAppleLoading}
+      >
+        <Text style={styles.primaryText}>{googleButtonText}</Text>
       </TouchableOpacity>
 
       {Platform.OS === "ios" && (
-        <TouchableOpacity style={styles.appleButton} onPress={signInWithApple}>
-          <Text style={styles.appleText}>Continue with Apple</Text>
+        <TouchableOpacity 
+          style={[styles.appleButton, isAppleLoading && styles.buttonDisabled]} 
+          onPress={handleAppleSignIn}
+          disabled={isGoogleLoading || isAppleLoading}
+        >
+          <Text style={styles.appleText}>{appleButtonText}</Text>
         </TouchableOpacity>
       )}
 
       <Text style={styles.divider}>or</Text>
 
-      <TouchableOpacity onPress={() => navigation.navigate("EmailAuth", { mode: "signup" })}>
+      <TouchableOpacity onPress={handleEmailSignUp}>
         <Text style={styles.link}>Sign up with Email</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("EmailAuth", { mode: "signin" })}>
+      <TouchableOpacity onPress={handleEmailSignIn}>
         <Text style={styles.linkSecondary}>Already have an account? Sign in</Text>
       </TouchableOpacity>
     </View>
@@ -91,6 +145,9 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   divider: {
     fontSize: 14,

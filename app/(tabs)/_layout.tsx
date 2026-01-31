@@ -15,7 +15,7 @@ export default function TabLayout() {
     {
       name: 'feed',
       route: '/(tabs)/feed',
-      icon: 'rss-feed',
+      icon: 'article', // ✅ Fixed: Changed from 'rss-feed' to valid Material icon 'article'
       label: 'Feed',
     },
     {
