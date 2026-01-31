@@ -15,8 +15,21 @@ import {
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/utils/api";
+import { IconSymbol } from "@/components/IconSymbol";
 
 type Mode = "signin" | "signup" | "forgot-password";
+
+interface OAuthProvider {
+  enabled: boolean;
+  configured: boolean;
+  setupUrl?: string;
+  docsUrl?: string;
+}
+
+interface OAuthConfig {
+  google?: OAuthProvider;
+  apple?: OAuthProvider;
+}
 
 export default function AuthScreen() {
   const { 
@@ -45,7 +58,11 @@ export default function AuthScreen() {
   
   // OAuth config state
   const [oauthConfigChecked, setOauthConfigChecked] = useState(false);
-  const [oauthConfig, setOauthConfig] = useState<any>(null);
+  const [oauthConfig, setOauthConfig] = useState<OAuthConfig | null>(null);
+  
+  // OAuth setup modal state
+  const [showOAuthSetupModal, setShowOAuthSetupModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<"google" | "apple" | null>(null);
 
   // Check OAuth configuration on mount
   useEffect(() => {
@@ -75,7 +92,10 @@ export default function AuthScreen() {
       } catch (error) {
         console.error("❌ Failed to check OAuth config:", error);
         // If endpoint doesn't exist, assume OAuth is not configured
-        setOauthConfig({ google: { enabled: false }, apple: { enabled: false } });
+        setOauthConfig({ 
+          google: { enabled: false, configured: false }, 
+          apple: { enabled: false, configured: false } 
+        });
         setOauthConfigChecked(true);
       }
     };
@@ -210,9 +230,11 @@ export default function AuthScreen() {
     console.log("🔵 OAuth config:", oauthConfig);
     
     // Check if OAuth is configured
-    if (oauthConfig && !oauthConfig[provider]?.enabled) {
+    const providerConfig = oauthConfig?.[provider];
+    if (providerConfig && !providerConfig.enabled) {
       console.log("⚠️ OAuth provider not configured:", provider);
-      showError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in is not configured yet. Please use email sign-in or contact support to enable ${provider.charAt(0).toUpperCase() + provider.slice(1)} authentication.`);
+      setSelectedProvider(provider);
+      setShowOAuthSetupModal(true);
       return;
     }
     
@@ -282,6 +304,15 @@ export default function AuthScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenSetupGuide = (provider: "google" | "apple") => {
+    console.log("🔵 User tapped setup guide for:", provider);
+    const urls = {
+      google: "https://console.cloud.google.com/apis/credentials",
+      apple: "https://developer.apple.com/account/resources/identifiers/list/serviceId"
+    };
+    Linking.openURL(urls[provider]);
   };
 
   const titleText = mode === "signin" 
@@ -537,6 +568,7 @@ export default function AuthScreen() {
             <View style={styles.dividerLine} />
           </View>
 
+          {/* Google OAuth Button */}
           <TouchableOpacity
             style={[styles.socialButton, (loading || oauthLoading) && styles.buttonDisabled]}
             onPress={() => {
@@ -548,13 +580,27 @@ export default function AuthScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.socialButtonContent}>
+              <IconSymbol 
+                ios_icon_name="g.circle.fill" 
+                android_material_icon_name="g-translate" 
+                size={20} 
+                color="#4285F4" 
+              />
               <Text style={styles.socialButtonText}>{googleButtonText}</Text>
-              {oauthConfigChecked && oauthConfig?.google && !oauthConfig.google.enabled && (
-                <Text style={styles.configWarning}> (Setup required)</Text>
-              )}
             </View>
+            {oauthConfigChecked && oauthConfig?.google && !oauthConfig.google.enabled && (
+              <View style={styles.setupBadge}>
+                <IconSymbol 
+                  ios_icon_name="exclamationmark.circle.fill" 
+                  android_material_icon_name="info" 
+                  size={14} 
+                  color="#FF9500" 
+                />
+              </View>
+            )}
           </TouchableOpacity>
 
+          {/* Apple OAuth Button (iOS only) */}
           {Platform.OS === "ios" && (
             <TouchableOpacity
               style={[styles.socialButton, styles.appleButton, (loading || oauthLoading) && styles.buttonDisabled]}
@@ -567,13 +613,26 @@ export default function AuthScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.socialButtonContent}>
+                <IconSymbol 
+                  ios_icon_name="apple.logo" 
+                  android_material_icon_name="apple" 
+                  size={20} 
+                  color="#fff" 
+                />
                 <Text style={[styles.socialButtonText, styles.appleButtonText]}>
                   {appleButtonText}
                 </Text>
-                {oauthConfigChecked && oauthConfig?.apple && !oauthConfig.apple.enabled && (
-                  <Text style={[styles.configWarning, { color: "#fff" }]}> (Setup required)</Text>
-                )}
               </View>
+              {oauthConfigChecked && oauthConfig?.apple && !oauthConfig.apple.enabled && (
+                <View style={[styles.setupBadge, { backgroundColor: 'rgba(255, 149, 0, 0.2)' }]}>
+                  <IconSymbol 
+                    ios_icon_name="exclamationmark.circle.fill" 
+                    android_material_icon_name="info" 
+                    size={14} 
+                    color="#FF9500" 
+                  />
+                </View>
+              )}
             </TouchableOpacity>
           )}
 
@@ -623,6 +682,126 @@ export default function AuthScreen() {
             >
               <Text style={styles.modalButtonText}>OK</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* OAuth Setup Modal */}
+      <Modal
+        visible={showOAuthSetupModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setShowOAuthSetupModal(false);
+          setSelectedProvider(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.setupModalContent}>
+            <View style={styles.setupModalHeader}>
+              <IconSymbol 
+                ios_icon_name="exclamationmark.triangle.fill" 
+                android_material_icon_name="warning" 
+                size={48} 
+                color="#FF9500" 
+              />
+              <Text style={styles.setupModalTitle}>
+                {selectedProvider === "google" ? "Google" : "Apple"} Sign-In Not Available
+              </Text>
+              <Text style={styles.setupModalSubtitle}>
+                This authentication method hasn&apos;t been set up yet
+              </Text>
+            </View>
+
+            <View style={styles.setupModalBody}>
+              <View style={styles.setupInfoCard}>
+                <IconSymbol 
+                  ios_icon_name="info.circle.fill" 
+                  android_material_icon_name="info" 
+                  size={20} 
+                  color="#007AFF" 
+                />
+                <Text style={styles.setupInfoText}>
+                  {selectedProvider === "google" 
+                    ? "To enable Google Sign-In, the app administrator needs to configure OAuth credentials in the Google Cloud Console."
+                    : "To enable Apple Sign-In, the app administrator needs to configure Sign in with Apple in the Apple Developer Portal."}
+                </Text>
+              </View>
+
+              <View style={styles.setupStepsContainer}>
+                <Text style={styles.setupStepsTitle}>What you can do:</Text>
+                
+                <View style={styles.setupStep}>
+                  <View style={styles.setupStepNumber}>
+                    <Text style={styles.setupStepNumberText}>1</Text>
+                  </View>
+                  <View style={styles.setupStepContent}>
+                    <Text style={styles.setupStepTitle}>Use Email Sign-In</Text>
+                    <Text style={styles.setupStepDescription}>
+                      Sign in with your email and password instead
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.setupStep}>
+                  <View style={styles.setupStepNumber}>
+                    <Text style={styles.setupStepNumberText}>2</Text>
+                  </View>
+                  <View style={styles.setupStepContent}>
+                    <Text style={styles.setupStepTitle}>Contact Support</Text>
+                    <Text style={styles.setupStepDescription}>
+                      Ask the app administrator to enable {selectedProvider === "google" ? "Google" : "Apple"} authentication
+                    </Text>
+                  </View>
+                </View>
+
+                {__DEV__ && (
+                  <View style={styles.setupStep}>
+                    <View style={styles.setupStepNumber}>
+                      <Text style={styles.setupStepNumberText}>3</Text>
+                    </View>
+                    <View style={styles.setupStepContent}>
+                      <Text style={styles.setupStepTitle}>Setup Guide (Developers)</Text>
+                      <Text style={styles.setupStepDescription}>
+                        View the setup documentation
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.setupGuideButton}
+                        onPress={() => {
+                          handleOpenSetupGuide(selectedProvider!);
+                          setShowOAuthSetupModal(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.setupGuideButtonText}>
+                          Open {selectedProvider === "google" ? "Google Cloud Console" : "Apple Developer Portal"}
+                        </Text>
+                        <IconSymbol 
+                          ios_icon_name="arrow.up.right" 
+                          android_material_icon_name="open-in-new" 
+                          size={16} 
+                          color="#007AFF" 
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.setupModalFooter}>
+              <TouchableOpacity
+                style={styles.setupModalButton}
+                onPress={() => {
+                  console.log("🔵 User dismissed OAuth setup modal");
+                  setShowOAuthSetupModal(false);
+                  setSelectedProvider(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.setupModalButtonText}>Got It</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -766,15 +945,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
+    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
     backgroundColor: "#fff",
+    position: "relative",
   },
   socialButtonContent: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 12,
   },
   socialButtonText: {
     fontSize: 16,
@@ -787,6 +968,18 @@ const styles = StyleSheet.create({
   },
   appleButtonText: {
     color: "#fff",
+  },
+  setupBadge: {
+    position: "absolute",
+    right: 12,
+    top: "50%",
+    marginTop: -12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 149, 0, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   termsContainer: {
     flexDirection: "row",
@@ -812,6 +1005,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
   modalContent: {
     backgroundColor: "#fff",
@@ -851,11 +1045,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  configWarning: {
-    fontSize: 12,
-    color: "#ff9500",
-    fontStyle: "italic",
-  },
   troubleshootButton: {
     marginTop: 16,
     padding: 12,
@@ -869,5 +1058,130 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     fontWeight: "500",
+  },
+  setupModalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    width: "100%",
+    maxHeight: "90%",
+    position: "absolute",
+    bottom: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  setupModalHeader: {
+    alignItems: "center",
+    paddingTop: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  setupModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#000",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  setupModalSubtitle: {
+    fontSize: 15,
+    color: "#666",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  setupModalBody: {
+    padding: 24,
+  },
+  setupInfoCard: {
+    flexDirection: "row",
+    backgroundColor: "#F0F8FF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  setupInfoText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+    lineHeight: 20,
+  },
+  setupStepsContainer: {
+    gap: 16,
+  },
+  setupStepsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 8,
+  },
+  setupStep: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  setupStepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#007AFF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  setupStepNumberText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  setupStepContent: {
+    flex: 1,
+  },
+  setupStepTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 4,
+  },
+  setupStepDescription: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+  },
+  setupGuideButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#F0F8FF",
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  setupGuideButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+  setupModalFooter: {
+    padding: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  setupModalButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  setupModalButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

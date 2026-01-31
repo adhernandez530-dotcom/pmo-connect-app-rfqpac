@@ -1,11 +1,21 @@
 
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, Modal, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, Modal, ActivityIndicator, Linking } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useAuth } from "@/contexts/AuthContext";
 import { authenticatedFetch, BACKEND_URL, apiGet } from "@/utils/api";
+
+interface OAuthProvider {
+  enabled: boolean;
+  configured: boolean;
+}
+
+interface OAuthConfig {
+  google?: OAuthProvider;
+  apple?: OAuthProvider;
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -18,7 +28,7 @@ export default function SettingsScreen() {
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   
   // OAuth status (only in dev mode)
-  const [oauthStatus, setOauthStatus] = useState<any>(null);
+  const [oauthStatus, setOauthStatus] = useState<OAuthConfig | null>(null);
   const [loadingOAuthStatus, setLoadingOAuthStatus] = useState(false);
 
   // Load OAuth status in development mode
@@ -221,6 +231,15 @@ export default function SettingsScreen() {
     router.push('/privacy-settings');
   };
 
+  const handleOpenSetupGuide = (provider: "google" | "apple") => {
+    console.log('SettingsScreen: Opening setup guide for:', provider);
+    const urls = {
+      google: "https://console.cloud.google.com/apis/credentials",
+      apple: "https://developer.apple.com/account/resources/identifiers/list/serviceId"
+    };
+    Linking.openURL(urls[provider]);
+  };
+
   const settingsTitle = 'Settings';
   const accountSectionTitle = 'Account';
   const notificationSettingsText = 'Notification Settings';
@@ -254,51 +273,124 @@ export default function SettingsScreen() {
         {/* OAuth Status Section (Dev Mode Only) */}
         {__DEV__ && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔧 OAuth Status (Dev Only)</Text>
+            <Text style={styles.sectionTitle}>🔧 Authentication Status (Dev Only)</Text>
             {loadingOAuthStatus ? (
               <View style={styles.oauthStatusCard}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.oauthStatusText}>Loading OAuth status...</Text>
+                <Text style={styles.loadingText}>Loading authentication status...</Text>
               </View>
             ) : oauthStatus ? (
               <View style={styles.oauthStatusCard}>
-                <View style={styles.oauthProviderRow}>
-                  <Text style={styles.oauthProviderLabel}>Google OAuth:</Text>
-                  <View style={styles.oauthStatusBadge}>
-                    <IconSymbol
-                      ios_icon_name={oauthStatus.google?.enabled ? "checkmark.circle.fill" : "xmark.circle.fill"}
-                      android_material_icon_name={oauthStatus.google?.enabled ? "check-circle" : "cancel"}
-                      size={16}
-                      color={oauthStatus.google?.enabled ? "#34C759" : "#FF3B30"}
-                    />
-                    <Text style={[
-                      styles.oauthStatusText,
-                      { color: oauthStatus.google?.enabled ? "#34C759" : "#FF3B30" }
+                <Text style={styles.oauthCardTitle}>OAuth Providers</Text>
+                
+                {/* Google OAuth Status */}
+                <View style={styles.oauthProviderCard}>
+                  <View style={styles.oauthProviderHeader}>
+                    <View style={styles.oauthProviderLeft}>
+                      <IconSymbol
+                        ios_icon_name="g.circle.fill"
+                        android_material_icon_name="g-translate"
+                        size={24}
+                        color="#4285F4"
+                      />
+                      <Text style={styles.oauthProviderName}>Google Sign-In</Text>
+                    </View>
+                    <View style={[
+                      styles.oauthStatusBadge,
+                      { backgroundColor: oauthStatus.google?.enabled ? '#E8F5E9' : '#FFF3E0' }
                     ]}>
-                      {oauthStatus.google?.enabled ? "Enabled" : "Disabled"}
-                    </Text>
+                      <IconSymbol
+                        ios_icon_name={oauthStatus.google?.enabled ? "checkmark.circle.fill" : "exclamationmark.circle.fill"}
+                        android_material_icon_name={oauthStatus.google?.enabled ? "check-circle" : "warning"}
+                        size={14}
+                        color={oauthStatus.google?.enabled ? "#4CAF50" : "#FF9800"}
+                      />
+                      <Text style={[
+                        styles.oauthStatusText,
+                        { color: oauthStatus.google?.enabled ? "#4CAF50" : "#FF9800" }
+                      ]}>
+                        {oauthStatus.google?.enabled ? "Active" : "Not Configured"}
+                      </Text>
+                    </View>
                   </View>
+                  {!oauthStatus.google?.enabled && (
+                    <View style={styles.oauthSetupInfo}>
+                      <Text style={styles.oauthSetupText}>
+                        Configure Google OAuth credentials to enable Google Sign-In
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.oauthSetupButton}
+                        onPress={() => handleOpenSetupGuide("google")}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.oauthSetupButtonText}>Setup Guide</Text>
+                        <IconSymbol
+                          ios_icon_name="arrow.up.right"
+                          android_material_icon_name="open-in-new"
+                          size={14}
+                          color="#007AFF"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
-                <View style={styles.oauthProviderRow}>
-                  <Text style={styles.oauthProviderLabel}>Apple OAuth:</Text>
-                  <View style={styles.oauthStatusBadge}>
-                    <IconSymbol
-                      ios_icon_name={oauthStatus.apple?.enabled ? "checkmark.circle.fill" : "xmark.circle.fill"}
-                      android_material_icon_name={oauthStatus.apple?.enabled ? "check-circle" : "cancel"}
-                      size={16}
-                      color={oauthStatus.apple?.enabled ? "#34C759" : "#FF3B30"}
-                    />
-                    <Text style={[
-                      styles.oauthStatusText,
-                      { color: oauthStatus.apple?.enabled ? "#34C759" : "#FF3B30" }
+
+                {/* Apple OAuth Status */}
+                <View style={styles.oauthProviderCard}>
+                  <View style={styles.oauthProviderHeader}>
+                    <View style={styles.oauthProviderLeft}>
+                      <IconSymbol
+                        ios_icon_name="apple.logo"
+                        android_material_icon_name="apple"
+                        size={24}
+                        color="#000"
+                      />
+                      <Text style={styles.oauthProviderName}>Apple Sign-In</Text>
+                    </View>
+                    <View style={[
+                      styles.oauthStatusBadge,
+                      { backgroundColor: oauthStatus.apple?.enabled ? '#E8F5E9' : '#FFF3E0' }
                     ]}>
-                      {oauthStatus.apple?.enabled ? "Enabled" : "Disabled"}
-                    </Text>
+                      <IconSymbol
+                        ios_icon_name={oauthStatus.apple?.enabled ? "checkmark.circle.fill" : "exclamationmark.circle.fill"}
+                        android_material_icon_name={oauthStatus.apple?.enabled ? "check-circle" : "warning"}
+                        size={14}
+                        color={oauthStatus.apple?.enabled ? "#4CAF50" : "#FF9800"}
+                      />
+                      <Text style={[
+                        styles.oauthStatusText,
+                        { color: oauthStatus.apple?.enabled ? "#4CAF50" : "#FF9800" }
+                      ]}>
+                        {oauthStatus.apple?.enabled ? "Active" : "Not Configured"}
+                      </Text>
+                    </View>
                   </View>
+                  {!oauthStatus.apple?.enabled && (
+                    <View style={styles.oauthSetupInfo}>
+                      <Text style={styles.oauthSetupText}>
+                        Configure Sign in with Apple to enable Apple Sign-In
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.oauthSetupButton}
+                        onPress={() => handleOpenSetupGuide("apple")}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.oauthSetupButtonText}>Setup Guide</Text>
+                        <IconSymbol
+                          ios_icon_name="arrow.up.right"
+                          android_material_icon_name="open-in-new"
+                          size={14}
+                          color="#007AFF"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
+
                 <TouchableOpacity
                   style={styles.refreshButton}
                   onPress={loadOAuthStatus}
+                  activeOpacity={0.7}
                 >
                   <IconSymbol
                     ios_icon_name="arrow.clockwise"
@@ -311,10 +403,11 @@ export default function SettingsScreen() {
               </View>
             ) : (
               <View style={styles.oauthStatusCard}>
-                <Text style={styles.oauthStatusText}>Failed to load OAuth status</Text>
+                <Text style={styles.errorText}>Failed to load authentication status</Text>
                 <TouchableOpacity
                   style={styles.refreshButton}
                   onPress={loadOAuthStatus}
+                  activeOpacity={0.7}
                 >
                   <IconSymbol
                     ios_icon_name="arrow.clockwise"
@@ -681,41 +774,96 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 8,
   },
-  oauthProviderRow: {
+  oauthCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  oauthProviderCard: {
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  oauthProviderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  oauthProviderLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+  oauthProviderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  oauthProviderName: {
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.text,
   },
   oauthStatusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   oauthStatusText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
+  },
+  oauthSetupInfo: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.backgroundAlt,
+  },
+  oauthSetupText: {
+    fontSize: 13,
     color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  oauthSetupButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  oauthSetupButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
   },
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     backgroundColor: colors.background,
     borderRadius: 8,
-    marginTop: 4,
+    marginTop: 8,
   },
   refreshButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.primary,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#FF3B30',
+    textAlign: 'center',
   },
 });
