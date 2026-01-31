@@ -38,6 +38,8 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [hasExistingProfile, setHasExistingProfile] = useState(false);
 
   // Error modal state
   const [errorModalVisible, setErrorModalVisible] = useState(false);
@@ -70,6 +72,45 @@ export default function OnboardingScreen() {
   // Validation
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameError, setUsernameError] = useState("");
+
+  // Check if user already has a profile (from OAuth)
+  React.useEffect(() => {
+    checkExistingProfile();
+  }, []);
+
+  const checkExistingProfile = async () => {
+    console.log("Onboarding: Checking if user already has a profile from OAuth");
+    setLoadingProfile(true);
+    
+    try {
+      const { authenticatedGet } = await import("@/utils/api");
+      const response = await authenticatedGet("/api/profile");
+      
+      console.log("Onboarding: Profile check response:", response);
+      
+      if (response && response.username) {
+        console.log("Onboarding: User already has profile with username:", response.username);
+        setHasExistingProfile(true);
+        setUsername(response.username);
+        setFullName(response.fullName || "");
+        setLocation(response.location || "");
+        setBio(response.bio || "");
+        setPhoneNumber(response.phoneNumber || "");
+        setUsernameAvailable(true); // Username already exists and belongs to user
+        
+        // Skip to step 2 since username is already set
+        console.log("Onboarding: Skipping to step 2 (OAuth user with existing username)");
+        setStep(2);
+      } else {
+        console.log("Onboarding: No existing profile found, starting from step 1");
+      }
+    } catch (error: any) {
+      console.log("Onboarding: No existing profile found or error:", error?.message);
+      // If profile doesn't exist, that's fine - user needs to complete onboarding
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
   const showError = (message: string) => {
     console.log("Onboarding: Showing error modal:", message);
@@ -394,15 +435,26 @@ export default function OnboardingScreen() {
     };
     
     console.log("Onboarding: Submitting onboarding data:", onboardingData);
+    console.log("Onboarding: Has existing profile (OAuth):", hasExistingProfile);
 
     try {
-      const response = await authenticatedPost(`/api/onboarding/complete`, onboardingData);
+      // If user has existing profile from OAuth, update it instead of creating new
+      if (hasExistingProfile) {
+        console.log("Onboarding: Updating existing OAuth profile");
+        const { authenticatedPut } = await import("@/utils/api");
+        await authenticatedPut(`/api/profile`, onboardingData);
+      } else {
+        console.log("Onboarding: Creating new profile");
+        await authenticatedPost(`/api/onboarding/complete`, onboardingData);
+      }
 
-      console.log("Onboarding: Backend response:", response);
-      console.log("Onboarding: Onboarding completed successfully");
+      console.log("Onboarding: Profile setup completed successfully");
       
       // Show success message
-      setErrorMessage("Your profile has been set up successfully! Welcome to the community.");
+      const successMsg = hasExistingProfile 
+        ? "Your profile has been updated successfully! Welcome to the community."
+        : "Your profile has been set up successfully! Welcome to the community.";
+      setErrorMessage(successMsg);
       setErrorModalVisible(true);
       
       // Navigate after a short delay
@@ -443,7 +495,9 @@ export default function OnboardingScreen() {
   };
 
   const renderStep1 = () => {
-    const usernameHint = `Username must be 3+ characters (letters, numbers, underscore)`;
+    const usernameHint = hasExistingProfile 
+      ? `Your username was automatically created from your account`
+      : `Username must be 3+ characters (letters, numbers, underscore)`;
     const usernameStatusColor = usernameAvailable === true
       ? "#34C759"
       : usernameAvailable === false
@@ -454,7 +508,9 @@ export default function OnboardingScreen() {
       <View style={styles.stepContainer}>
         <Text style={styles.stepTitle}>Create Your Profile</Text>
         <Text style={styles.stepDescription}>
-          Let&apos;s start with the basics
+          {hasExistingProfile 
+            ? "Your username has been set up. Let's complete your profile."
+            : "Let's start with the basics"}
         </Text>
 
         <View style={styles.inputContainer}>
@@ -465,6 +521,7 @@ export default function OnboardingScreen() {
                 styles.input,
                 usernameError ? styles.inputError : null,
                 usernameAvailable === true ? styles.inputSuccess : null,
+                hasExistingProfile ? styles.inputDisabled : null,
               ]}
               placeholder="johndoe"
               value={username}
@@ -473,6 +530,7 @@ export default function OnboardingScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               maxLength={30}
+              editable={!hasExistingProfile}
             />
             {checkingUsername && (
               <ActivityIndicator
@@ -952,6 +1010,29 @@ export default function OnboardingScreen() {
   const progressPercentage = (step / 5) * 100;
   const stepText = `Step ${step} of 5`;
 
+  // Show loading state while checking for existing profile
+  if (loadingProfile) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: "Welcome",
+            headerBackVisible: false,
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+          }}
+        />
+        <View style={[styles.container, styles.loadingContainer]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading your profile...</Text>
+        </View>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
@@ -1288,6 +1369,19 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  inputDisabled: {
+    backgroundColor: colors.backgroundAlt,
+    opacity: 0.7,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
   },
   modalOverlay: {
     flex: 1,
