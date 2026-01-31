@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "PMO Connect",
@@ -25,7 +24,8 @@
         "NSLocationWhenInUseUsageDescription": "Allow PMO Connect to use your location to show nearby users and services.",
         "NSContactsUsageDescription": "Allow PMO Connect to access your contacts to help you find friends on the platform.",
         "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized content and improve your experience."
-      }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -47,7 +47,8 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "VIBRATE"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
@@ -57,6 +58,7 @@
       "expo-font",
       "expo-router",
       "expo-web-browser",
+      "@react-native-firebase/app",
       [
         "expo-camera",
         {
@@ -111,7 +113,13 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev"
+      "backendUrl": "https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev",
+      "firebaseApiKey": "YOUR_FIREBASE_API_KEY",
+      "firebaseAuthDomain": "YOUR_PROJECT_ID.firebaseapp.com",
+      "firebaseProjectId": "YOUR_PROJECT_ID",
+      "firebaseStorageBucket": "YOUR_PROJECT_ID.appspot.com",
+      "firebaseMessagingSenderId": "YOUR_MESSAGING_SENDER_ID",
+      "firebaseAppId": "YOUR_APP_ID"
     }
   }
 }

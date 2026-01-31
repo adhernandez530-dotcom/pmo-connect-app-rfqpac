@@ -109,7 +109,7 @@ function RootLayoutNav() {
       return;
     }
 
-    const inAuthGroup = segments[0] === "auth" || segments[0] === "auth-popup" || segments[0] === "auth-callback";
+    const inAuthGroup = segments[0] === "auth" || segments[0] === "email-signup" || segments[0] === "email-signin" || segments[0] === "forgot-password";
     const inVerifyEmail = segments[0] === "verify-email" || segments[0] === "verify-email-callback";
     const inOnboarding = segments[0] === "onboarding";
     const inTabs = segments[0] === "(tabs)";
@@ -214,8 +214,9 @@ function RootLayoutNav() {
             >
               {/* Auth screens */}
               <Stack.Screen name="auth" options={{ headerShown: false }} />
-              <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-              <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+              <Stack.Screen name="email-signup" options={{ headerShown: false }} />
+              <Stack.Screen name="email-signin" options={{ headerShown: false }} />
+              <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
               {/* Email verification screen */}
               <Stack.Screen name="verify-email" options={{ headerShown: false }} />
               {/* Email verification callback screen */}

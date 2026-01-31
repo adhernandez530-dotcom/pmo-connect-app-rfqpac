@@ -1,8 +1,20 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
-import * as SecureStore from "expo-secure-store";
-import { authClient } from "@/lib/auth";
+import { 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  onAuthStateChanged,
+  User as FirebaseUser,
+  updateProfile,
+} from 'firebase/auth';
+import { auth, googleProvider, appleProvider, BACKEND_URL } from '@/lib/firebase';
 
 interface User {
   id: string;
@@ -27,24 +39,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SESSION_CHECK_KEY = "putmeon_session_checked";
-
-async function markSessionChecked() {
-  console.log("AuthContext: Marking session as checked");
-  if (Platform.OS === "web") {
-    localStorage.setItem(SESSION_CHECK_KEY, "true");
-  } else {
-    await SecureStore.setItemAsync(SESSION_CHECK_KEY, "true");
-  }
-}
-
-async function clearSessionCheck() {
-  console.log("AuthContext: Clearing session check marker");
-  if (Platform.OS === "web") {
-    localStorage.removeItem(SESSION_CHECK_KEY);
-  } else {
-    await SecureStore.deleteItemAsync(SESSION_CHECK_KEY);
-  }
+// Convert Firebase user to our User type
+function convertFirebaseUser(firebaseUser: FirebaseUser | null): User | null {
+  if (!firebaseUser) return null;
+  
+  return {
+    id: firebaseUser.uid,
+    email: firebaseUser.email || '',
+    name: firebaseUser.displayName || undefined,
+    image: firebaseUser.photoURL || undefined,
+    emailVerified: firebaseUser.emailVerified,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -52,75 +57,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUser();
+    console.log("AuthContext: Setting up auth state listener");
+    
+    // Listen to auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("AuthContext: Auth state changed:", {
+        hasUser: !!firebaseUser,
+        email: firebaseUser?.email,
+        emailVerified: firebaseUser?.emailVerified,
+      });
+      
+      const convertedUser = convertFirebaseUser(firebaseUser);
+      setUser(convertedUser);
+      setLoading(false);
+      
+      // If user is signed in, sync with backend
+      if (firebaseUser) {
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          console.log("AuthContext: Got Firebase ID token, syncing with backend");
+          
+          // Verify token with backend
+          const response = await fetch(`${BACKEND_URL}/api/auth/verify-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log("AuthContext: Backend verification successful:", data);
+          } else {
+            console.error("AuthContext: Backend verification failed:", response.status);
+          }
+        } catch (error) {
+          console.error("AuthContext: Failed to sync with backend:", error);
+        }
+      }
+    });
+    
+    // Check for redirect result on web
+    if (Platform.OS === 'web') {
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result) {
+            console.log("AuthContext: OAuth redirect result received:", result.user.email);
+          }
+        })
+        .catch((error) => {
+          console.error("AuthContext: OAuth redirect error:", error);
+        });
+    }
+    
+    return () => {
+      console.log("AuthContext: Cleaning up auth state listener");
+      unsubscribe();
+    };
   }, []);
 
   const fetchUser = async () => {
-    try {
-      console.log("AuthContext: Fetching user session");
-      setLoading(true);
-      const session = await authClient.getSession();
-      
-      console.log("AuthContext: Session response:", {
-        hasSession: !!session?.data?.session,
-        hasUser: !!session?.data?.user,
-        userEmail: session?.data?.user?.email,
-        sessionToken: session?.data?.session?.token ? "present" : "missing",
-      });
-      
-      if (session?.data?.user && session?.data?.session) {
-        console.log("AuthContext: User session found:", session.data.user.email);
-        setUser(session.data.user as User);
-        await markSessionChecked();
-      } else {
-        console.log("AuthContext: No user session found");
-        setUser(null);
-        await clearSessionCheck();
-      }
-    } catch (error) {
-      console.error("AuthContext: Failed to fetch user:", error);
-      setUser(null);
-      await clearSessionCheck();
-    } finally {
-      setLoading(false);
-    }
+    // Firebase handles this automatically via onAuthStateChanged
+    console.log("AuthContext: fetchUser called (handled by onAuthStateChanged)");
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
       console.log("AuthContext: Signing in with email:", email);
-      const result = await authClient.signIn.email({ 
-        email, 
-        password,
-      });
-      console.log("AuthContext: Sign in API call completed, result:", {
-        hasData: !!result?.data,
-        hasSession: !!result?.data?.session,
-        hasUser: !!result?.data?.user,
-      });
-      
-      // Fetch user session after successful sign in
-      await fetchUser();
-      console.log("AuthContext: Sign in successful");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log("AuthContext: Sign in successful:", userCredential.user.email);
     } catch (error: any) {
       console.error("AuthContext: Email sign in failed:", error);
-      console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));
       
-      // Extract meaningful error message with better context
       let errorMessage = "Sign in failed. Please try again.";
       
-      // Check for specific error types
-      if (error?.status === 403 || error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
-        errorMessage = "The authentication service is currently being updated. Please wait a moment and try again.";
-      } else if (error?.status === 401 || error?.message?.includes("401") || error?.message?.includes("Invalid credentials")) {
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         errorMessage = "Invalid email or password. Please check your credentials and try again.";
-      } else if (error?.status === 400 || error?.message?.includes("400")) {
-        errorMessage = "Invalid request. Please check your email and password format.";
-      } else if (error?.message?.includes("network") || error?.message?.includes("fetch") || error?.message?.includes("Failed to fetch")) {
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email address format.";
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = "This account has been disabled. Please contact support.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.code === 'auth/network-request-failed') {
         errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (error?.body?.message) {
-        errorMessage = error.body.message;
-      } else if (error?.message) {
+      } else if (error.message) {
         errorMessage = error.message;
       }
       
@@ -131,43 +153,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
       console.log("AuthContext: Signing up with email:", email, "name:", name);
-      const result = await authClient.signUp.email({
-        email,
-        password,
-        name: name || undefined,
-      });
-      console.log("AuthContext: Sign up API call completed, result:", {
-        hasData: !!result?.data,
-        hasSession: !!result?.data?.session,
-        hasUser: !!result?.data?.user,
-      });
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      console.log("AuthContext: Sign up successful:", userCredential.user.email);
       
-      // Fetch user session after successful sign up
-      await fetchUser();
-      console.log("AuthContext: Sign up successful, user should be redirected to email verification");
+      // Update profile with display name if provided
+      if (name && userCredential.user) {
+        await updateProfile(userCredential.user, {
+          displayName: name,
+        });
+        console.log("AuthContext: Profile updated with name:", name);
+      }
+      
+      // Send email verification
+      if (userCredential.user) {
+        await sendEmailVerification(userCredential.user);
+        console.log("AuthContext: Verification email sent");
+      }
     } catch (error: any) {
       console.error("AuthContext: Email sign up failed:", error);
-      console.error("AuthContext: Error details:", JSON.stringify(error, null, 2));
       
-      // Extract meaningful error message with better context
       let errorMessage = "Sign up failed. Please try again.";
       
-      // Check for specific error types
-      if (error?.status === 403 || error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
-        errorMessage = "The authentication service is currently being updated. Please wait a moment and try again.";
-      } else if (error?.status === 400 || error?.message?.includes("400")) {
-        errorMessage = "Invalid request. Please check your email and password format.";
-      } else if (error?.message?.includes("already exists") || error?.message?.includes("duplicate")) {
+      if (error.code === 'auth/email-already-in-use') {
         errorMessage = "An account with this email already exists. Please sign in instead.";
-      } else if (error?.message?.includes("invalid email")) {
+      } else if (error.code === 'auth/invalid-email') {
         errorMessage = "Please enter a valid email address.";
-      } else if (error?.message?.includes("password")) {
+      } else if (error.code === 'auth/weak-password') {
         errorMessage = "Password must be at least 6 characters long.";
-      } else if (error?.message?.includes("network") || error?.message?.includes("fetch") || error?.message?.includes("Failed to fetch")) {
+      } else if (error.code === 'auth/network-request-failed') {
         errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (error?.body?.message) {
-        errorMessage = error.body.message;
-      } else if (error?.message) {
+      } else if (error.message) {
         errorMessage = error.message;
       }
       
@@ -175,81 +190,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithSocial = async (provider: "google" | "apple") => {
+  const signInWithSocial = async (provider: 'google' | 'apple') => {
     try {
       console.log("🚀 AuthContext: Starting", provider, "sign in on platform:", Platform.OS);
-      console.log("🚀 AuthContext: Current URL:", Platform.OS === "web" ? window.location.href : "N/A");
       
-      if (Platform.OS === "web") {
-        console.log("🌐 AuthContext: Web platform detected - initiating OAuth redirect");
-        console.log("🌐 AuthContext: Callback URL will be:", window.location.origin + "/auth-callback");
+      const authProvider = provider === 'google' ? googleProvider : appleProvider;
+      
+      if (Platform.OS === 'web') {
+        console.log("🌐 AuthContext: Web platform detected - using popup for OAuth");
         
-        // On web, Better Auth will redirect the current page to the OAuth provider
-        // The callback URL will bring the user back to the app with the session set
         try {
-          console.log("🌐 AuthContext: Calling authClient.signIn.social with provider:", provider);
-          const result = await authClient.signIn.social({
-            provider,
-            callbackURL: window.location.origin + "/auth-callback",
-          });
-          
-          console.log("✅ AuthContext: OAuth redirect initiated successfully, result:", result);
-          // Note: The page will redirect, so code after this won't execute
-        } catch (redirectError: any) {
-          console.error("❌ AuthContext: OAuth redirect failed:", redirectError);
-          console.error("❌ AuthContext: Error type:", typeof redirectError);
-          console.error("❌ AuthContext: Error keys:", Object.keys(redirectError || {}));
-          console.error("❌ AuthContext: Error message:", redirectError?.message);
-          console.error("❌ AuthContext: Error status:", redirectError?.status);
-          throw redirectError;
+          const result = await signInWithPopup(auth, authProvider);
+          console.log("✅ AuthContext: OAuth popup successful:", result.user.email);
+        } catch (popupError: any) {
+          // If popup is blocked, fall back to redirect
+          if (popupError.code === 'auth/popup-blocked') {
+            console.log("🌐 AuthContext: Popup blocked, falling back to redirect");
+            await signInWithRedirect(auth, authProvider);
+          } else {
+            throw popupError;
+          }
         }
       } else {
-        console.log("📱 AuthContext: Native platform detected - starting native OAuth flow");
-        const result = await authClient.signIn.social({
-          provider,
-          callbackURL: "/",
-        });
-        
-        console.log("📱 AuthContext: Native OAuth result:", result);
-        
-        // Fetch user session after successful social sign in
-        await fetchUser();
-        console.log("✅ AuthContext:", provider, "sign in successful on native");
+        console.log("📱 AuthContext: Native platform detected - OAuth not yet implemented for native");
+        throw new Error(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign in is not yet available on mobile. Please use email sign in.`);
       }
     } catch (error: any) {
       console.error(`❌ AuthContext: ${provider} sign in failed:`, error);
-      console.error("❌ AuthContext: Error type:", typeof error);
-      console.error("❌ AuthContext: Error message:", error?.message);
-      console.error("❌ AuthContext: Error status:", error?.status);
-      console.error("❌ AuthContext: Error response:", error?.response);
-      console.error("❌ AuthContext: Full error details:", JSON.stringify(error, null, 2));
       
-      // Extract meaningful error message with better context
       const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
       let errorMessage = `${providerName} sign in failed. Please try again.`;
       
-      // Check for specific error types
-      if (error?.status === 403 || error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
-        errorMessage = `The authentication service is currently being updated. Please wait a moment and try ${providerName} sign in again, or use email sign in.`;
-      } else if (error?.status === 401 || error?.message?.includes("401") || error?.message?.includes("Unauthorized")) {
-        errorMessage = `${providerName} authentication failed. Please check your ${providerName} account settings.`;
-      } else if (error?.status === 404 || error?.message?.includes("404") || error?.message?.includes("not found")) {
-        errorMessage = `${providerName} sign in is not available yet. The authentication service is being set up. Please try email sign in or wait a moment.`;
-      } else if (error?.status === 500 || error?.message?.includes("500") || error?.message?.includes("Internal Server Error")) {
-        errorMessage = `${providerName} sign in encountered a server error. The OAuth provider may not be configured yet. Please try email sign in or contact support.`;
-      } else if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
-        // Don't show error for user cancellation
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         console.log("ℹ️ AuthContext: User cancelled OAuth flow");
         return;
-      } else if (error?.message?.includes("popup") || error?.message?.includes("blocked")) {
+      } else if (error.code === 'auth/popup-blocked') {
         errorMessage = `Please allow popups in your browser to sign in with ${providerName}.`;
-      } else if (error?.message?.includes("network") || error?.message?.includes("fetch") || error?.message?.includes("Failed to fetch")) {
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        errorMessage = `An account already exists with this email using a different sign-in method.`;
+      } else if (error.code === 'auth/network-request-failed') {
         errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (error?.message?.includes("redirect")) {
-        errorMessage = `${providerName} OAuth redirect failed. The provider may not be configured correctly. Please try email sign in.`;
-      } else if (error?.body?.message) {
-        errorMessage = error.body.message;
-      } else if (error?.message) {
+      } else if (error.message) {
         errorMessage = error.message;
       }
       
@@ -270,23 +251,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const forgotPassword = async (email: string) => {
     try {
       console.log("AuthContext: Requesting password reset for email:", email);
-      
-      // Import API helper
-      const { apiPost } = await import("@/utils/api");
-      
-      // Call backend to request password reset
-      await apiPost("/api/auth/request-password-reset", { email });
-      
+      await sendPasswordResetEmail(auth, email);
       console.log("AuthContext: Password reset email sent successfully");
     } catch (error: any) {
       console.error("AuthContext: Forgot password failed:", error);
       
-      // Extract meaningful error message
       let errorMessage = "Failed to send password reset email. Please try again.";
       
-      if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
+      if (error.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address.";
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email address.";
+      } else if (error.code === 'auth/network-request-failed') {
         errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (error?.message) {
+      } else if (error.message) {
         errorMessage = error.message;
       }
       
@@ -298,25 +276,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("AuthContext: Resending verification email");
       
-      // Import API helper
-      const { authenticatedPost } = await import("@/utils/api");
+      if (!auth.currentUser) {
+        throw new Error("Please sign in again to resend verification email.");
+      }
       
-      // Call backend to resend verification email
-      // Note: This endpoint requires authentication
-      await authenticatedPost("/api/auth/send-verification-email", {});
-      
+      await sendEmailVerification(auth.currentUser);
       console.log("AuthContext: Verification email resent successfully");
     } catch (error: any) {
       console.error("AuthContext: Resend verification failed:", error);
       
-      // Extract meaningful error message
       let errorMessage = "Failed to resend verification email. Please try again.";
       
-      if (error?.message?.includes("Authentication session not found")) {
-        errorMessage = "Please sign in again to resend verification email.";
-      } else if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
+      if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many requests. Please wait a moment before trying again.";
+      } else if (error.code === 'auth/network-request-failed') {
         errorMessage = "Network error. Please check your internet connection and try again.";
-      } else if (error?.message) {
+      } else if (error.message) {
         errorMessage = error.message;
       }
       
@@ -327,14 +302,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       console.log("AuthContext: Signing out");
-      await authClient.signOut();
-      await clearSessionCheck();
+      await firebaseSignOut(auth);
       setUser(null);
       console.log("AuthContext: Sign out successful");
     } catch (error) {
       console.error("AuthContext: Sign out failed:", error);
       // Even if signOut fails, clear local state
-      await clearSessionCheck();
       setUser(null);
     }
   };

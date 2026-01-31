@@ -1,6 +1,6 @@
 
 import Constants from "expo-constants";
-import { authClient } from "@/lib/auth";
+import { auth } from "@/lib/firebase";
 
 /**
  * Backend URL is configured in app.json under expo.extra.backendUrl
@@ -16,17 +16,23 @@ export const isBackendConfigured = (): boolean => {
 };
 
 /**
- * Get session token from Better Auth
- * This uses the auth client's session management
+ * Get Firebase ID token for authenticated requests
  *
- * @returns Session token or null if not found
+ * @returns Firebase ID token or null if not authenticated
  */
-export const getSessionToken = async (): Promise<string | null> => {
+export const getFirebaseToken = async (): Promise<string | null> => {
   try {
-    const session = await authClient.getSession();
-    return session?.data?.session?.token || null;
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      console.error("[API] No authenticated user found");
+      return null;
+    }
+    
+    const token = await currentUser.getIdToken();
+    console.log("[API] Firebase ID token retrieved");
+    return token;
   } catch (error) {
-    console.error("[API] Error retrieving session token:", error);
+    console.error("[API] Error retrieving Firebase token:", error);
     return null;
   }
 };
@@ -57,7 +63,6 @@ export const apiCall = async <T = any>(
     const response = await fetch(url, {
       ...options,
       headers,
-      credentials: "include", // Important: Include cookies for Better Auth
     });
 
     console.log("[API] Response status:", response.status, response.statusText);
@@ -171,29 +176,27 @@ export const apiDelete = async <T = any>(endpoint: string, data: any = {}): Prom
 
 /**
  * Authenticated API call helper
- * Uses Better Auth session cookies for authentication
+ * Uses Firebase ID token for authentication
  *
  * @param endpoint - API endpoint path
  * @param options - Fetch options (method, headers, body, etc.)
  * @returns Parsed JSON response
- * @throws Error if session not found or request fails
+ * @throws Error if not authenticated or request fails
  */
 export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> => {
-  // Check for session
-  console.log("[API] Checking for authentication session");
-  const session = await authClient.getSession();
+  // Get Firebase ID token
+  console.log("[API] Getting Firebase ID token for authenticated request");
+  const token = await getFirebaseToken();
 
-  if (!session?.data?.session) {
-    console.error("[API] No authentication session found");
-    console.error("[API] Session data:", JSON.stringify(session, null, 2));
-    throw new Error("Authentication session not found. Please sign in.");
+  if (!token) {
+    console.error("[API] No Firebase token found");
+    throw new Error("Authentication required. Please sign in.");
   }
 
-  console.log("[API] Session found for user:", session.data.user?.email);
-  console.log("[API] Session token:", session.data.session.token ? "present" : "missing");
+  console.log("[API] Firebase token obtained, making authenticated request");
 
   // Check if body is FormData to avoid setting Content-Type
   const isFormData = options?.body instanceof FormData;
@@ -204,8 +207,8 @@ export const authenticatedApiCall = async <T = any>(
       // Don't override Content-Type if it's FormData or already set
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...options?.headers,
+      'Authorization': `Bearer ${token}`,
     },
-    credentials: "include", // Include cookies for Better Auth
   });
 };
 
@@ -293,22 +296,21 @@ export const authenticatedDelete = async <T = any>(endpoint: string, data: any =
  * @param url - Full URL or endpoint path
  * @param options - Fetch options (method, headers, body, etc.)
  * @returns Response object
- * @throws Error if session not found
+ * @throws Error if not authenticated
  */
 export const authenticatedFetch = async (
   url: string,
   options?: RequestInit
 ): Promise<Response> => {
-  console.log("[API] Authenticated fetch - checking session");
-  const session = await authClient.getSession();
+  console.log("[API] Authenticated fetch - getting Firebase token");
+  const token = await getFirebaseToken();
 
-  if (!session?.data?.session) {
-    console.error("[API] No authentication session found for fetch");
-    console.error("[API] Session data:", JSON.stringify(session, null, 2));
-    throw new Error("Authentication session not found. Please sign in.");
+  if (!token) {
+    console.error("[API] No Firebase token found for fetch");
+    throw new Error("Authentication required. Please sign in.");
   }
 
-  console.log("[API] Session found for fetch, user:", session.data.user?.email);
+  console.log("[API] Firebase token obtained for fetch");
 
   const fullUrl = url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
   console.log("[API] Authenticated fetch:", fullUrl, options?.method || "GET");
@@ -317,7 +319,7 @@ export const authenticatedFetch = async (
     ...options,
     headers: {
       ...options?.headers,
+      'Authorization': `Bearer ${token}`,
     },
-    credentials: "include", // Include cookies for Better Auth
   });
 };
