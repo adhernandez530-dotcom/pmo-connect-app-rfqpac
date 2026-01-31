@@ -1,16 +1,13 @@
 
 {
   "cli": {
-    "version": ">= 13.2.0",
-    "appVersionSource": "remote"
+    "version": ">= 3.13.2"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "autoIncrement": true,
       "ios": {
-        "simulator": false,
         "buildConfiguration": "Debug"
       },
       "android": {
@@ -19,7 +16,6 @@
     },
     "preview": {
       "distribution": "internal",
-      "autoIncrement": true,
       "ios": {
         "buildConfiguration": "Release"
       },
@@ -28,7 +24,6 @@
       }
     },
     "production": {
-      "autoIncrement": true,
       "ios": {
         "buildConfiguration": "Release"
       },
@@ -38,16 +33,6 @@
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "placeholder",
-        "appleTeamId": "placeholder"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./path/to/api-key.json",
-        "track": "internal"
-      }
-    }
+    "production": {}
   }
 }

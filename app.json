@@ -16,7 +16,15 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.pmoconnect.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow PMO Connect to access your camera to take photos and videos for your posts.",
+        "NSMicrophoneUsageDescription": "Allow PMO Connect to access your microphone to record audio for your posts.",
+        "NSPhotoLibraryUsageDescription": "Allow PMO Connect to access your photo library to share images in your posts.",
+        "NSPhotoLibraryAddUsageDescription": "Allow PMO Connect to save photos to your library.",
+        "NSLocationWhenInUseUsageDescription": "Allow PMO Connect to use your location to show nearby users and services.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow PMO Connect to use your location to show nearby users and services.",
+        "NSContactsUsageDescription": "Allow PMO Connect to access your contacts to help you find friends on the platform.",
+        "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized content and improve your experience."
       }
     },
     "android": {
@@ -25,7 +33,21 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.pmoconnect.app"
+      "package": "com.pmoconnect.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_CONTACTS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "VIBRATE"
+      ]
     },
     "web": {
       "favicon": "./assets/images/final_quest_240x240.png",
@@ -34,7 +56,56 @@
     "plugins": [
       "expo-font",
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow PMO Connect to access your camera to take photos and videos.",
+          "microphonePermission": "Allow PMO Connect to access your microphone to record audio.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow PMO Connect to access your photos to share images.",
+          "cameraPermission": "Allow PMO Connect to access your camera to take photos."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow PMO Connect to use your location to show nearby users and services.",
+          "locationAlwaysPermission": "Allow PMO Connect to use your location to show nearby users and services.",
+          "locationWhenInUsePermission": "Allow PMO Connect to use your location to show nearby users and services.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow PMO Connect to access your contacts to help you find friends."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow PMO Connect to access your photo library to save and share images.",
+          "savePhotosPermission": "Allow PMO Connect to save photos to your library.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/natively-dark.png",
+          "color": "#000000",
+          "sounds": [],
+          "mode": "production"
+        }
+      ]
     ],
     "scheme": "pmoconnect",
     "experiments": {
