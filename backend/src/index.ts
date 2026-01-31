@@ -28,6 +28,7 @@ import { registerPostsExtendedRoutes } from './routes/posts-extended.js';
 import { registerUserManagementRoutes } from './routes/user-management.js';
 import { registerAuthDebugRoutes } from './routes/auth-debug.js';
 import { registerOAuthConfigRoutes } from './routes/oauth-config.js';
+import { registerOAuthCallbackRoutes } from './routes/oauth-callback.js';
 import { registerAuthEmailRoutes } from './routes/auth-email.js';
 
 // Create application with comprehensive schema (auth + app tables)
@@ -104,6 +105,7 @@ app.withStorage();
 // Register auth and OAuth debug routes first for early diagnostics
 registerAuthDebugRoutes(app);
 registerOAuthConfigRoutes(app);
+registerOAuthCallbackRoutes(app);
 registerAuthEmailRoutes(app);
 registerInitRoutes(app);
 registerUserRoutes(app);

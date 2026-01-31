@@ -7,6 +7,7 @@ import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
+import { generateUsernameFromName } from '../utils/username.js';
 
 export function registerOnboardingRoutes(app: App) {
   const requireAuth = app.requireAuth();
@@ -157,6 +158,78 @@ export function registerOnboardingRoutes(app: App) {
       } catch (error) {
         app.logger.error({ err: error, username }, 'Failed to check username');
         throw error;
+      }
+    }
+  );
+
+  /**
+   * POST /api/onboarding/suggest-username
+   * Generate username suggestions from a name
+   * Useful for users to get auto-generated username suggestions
+   * No authentication required
+   */
+  app.fastify.post(
+    '/api/onboarding/suggest-username',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { name, email } = request.body as {
+        name?: string;
+        email?: string;
+      };
+
+      app.logger.info({ name, email }, 'Generating username suggestions');
+
+      try {
+        if (!name && !email) {
+          return reply.status(400).send({
+            error: 'Name or email is required for username generation',
+          });
+        }
+
+        const nameToUse = name || email || '';
+
+        // Generate multiple suggestions
+        const suggestions: string[] = [];
+        const maxSuggestions = 3;
+
+        for (let i = 0; i < maxSuggestions; i++) {
+          try {
+            const suggestion = await generateUsernameFromName(nameToUse, app, email);
+
+            // Check if this suggestion is already in our list
+            if (!suggestions.includes(suggestion)) {
+              suggestions.push(suggestion);
+            }
+          } catch (error) {
+            app.logger.warn({ err: error }, 'Failed to generate username suggestion');
+            // Continue to try more suggestions
+          }
+        }
+
+        if (suggestions.length === 0) {
+          return reply.status(500).send({
+            error: 'Failed to generate username suggestions',
+            message: 'Please try with a different name or email',
+          });
+        }
+
+        app.logger.info(
+          { name, email, suggestionCount: suggestions.length },
+          'Username suggestions generated'
+        );
+
+        return {
+          suggestions,
+          message: 'Select one of these usernames or provide your own in onboarding',
+        };
+      } catch (error) {
+        app.logger.error(
+          { err: error, name, email },
+          'Failed to generate username suggestions'
+        );
+        return reply.status(500).send({
+          error: 'Username generation failed',
+          message: 'Please try again or provide a custom username in onboarding',
+        });
       }
     }
   );

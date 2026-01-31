@@ -1,10 +1,14 @@
 /**
  * OAuth Callback Routes
  * Handles OAuth authentication callbacks for both web and native platforms
+ * Automatically creates user profiles with generated usernames on first-time OAuth login
  */
 
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { eq } from 'drizzle-orm';
+import * as schema from '../db/schema.js';
+import { ensureUserProfile } from '../utils/username.js';
 
 export function registerOAuthCallbackRoutes(app: App) {
   /**
@@ -203,6 +207,77 @@ export function registerOAuthCallbackRoutes(app: App) {
   );
 
   /**
+   * GET /api/oauth/ensure-profile
+   * Ensures user profile exists for OAuth-authenticated user
+   * Called after OAuth sign-in to create profile with auto-generated username
+   * Requires authentication via session
+   */
+  app.fastify.get(
+    '/api/oauth/ensure-profile',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const requireAuth = app.requireAuth();
+      const session = await requireAuth(request, reply);
+
+      if (!session) {
+        app.logger.warn('Ensure profile: No session found');
+        return;
+      }
+
+      app.logger.info(
+        { userId: session.user.id, email: session.user.email },
+        'Ensuring user profile exists for OAuth user'
+      );
+
+      try {
+        const userId = session.user.id;
+        const userName = session.user.name;
+        const userEmail = session.user.email;
+        const userImage = session.user.image;
+
+        // Create profile if it doesn't exist
+        await ensureUserProfile(userId, userName, userEmail, userImage, app);
+
+        // Fetch and return the profile
+        const profile = await app.db.query.userProfiles.findFirst({
+          where: eq(schema.userProfiles.id, userId),
+        });
+
+        if (!profile) {
+          app.logger.error({ userId }, 'User profile not found after ensure attempt');
+          return reply.status(500).send({ error: 'Failed to ensure user profile' });
+        }
+
+        app.logger.info(
+          { userId, username: profile.username },
+          'User profile ensured/created successfully'
+        );
+
+        return {
+          success: true,
+          profile: {
+            id: profile.id,
+            username: profile.username,
+            fullName: profile.fullName,
+            avatarUrl: profile.avatarUrl,
+            createdAt: profile.createdAt,
+            updatedAt: profile.updatedAt,
+          },
+          message: 'User profile created/verified successfully',
+        };
+      } catch (error) {
+        app.logger.error(
+          { err: error, userId: session.user.id },
+          'Failed to ensure user profile'
+        );
+        return reply.status(500).send({
+          error: 'Profile creation failed',
+          message: 'OAuth authentication succeeded but profile creation encountered an error',
+        });
+      }
+    }
+  );
+
+  /**
    * GET /oauth/info
    * Get OAuth configuration information for clients
    * Helps clients understand available OAuth flows
@@ -231,6 +306,7 @@ export function registerOAuthCallbackRoutes(app: App) {
           signIn: 'POST /api/auth/sign-in/social',
           getSession: 'GET /api/auth/get-session',
           signOut: 'POST /api/auth/sign-out',
+          ensureProfile: 'GET /api/oauth/ensure-profile (create/verify profile after OAuth)',
         },
       };
     }
