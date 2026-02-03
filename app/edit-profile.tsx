@@ -121,23 +121,28 @@ export default function EditProfileScreen() {
   const handlePickImage = async () => {
     console.log('EditProfileScreen: User tapped change avatar');
     
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (permissionResult.granted === false) {
-      Alert.alert('Permission Required', 'Permission to access photo library is required');
-      return;
-    }
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Permission to access photo library is required');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      console.log('EditProfileScreen: Image selected', result.assets[0].uri);
-      setLocalAvatarUri(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        console.log('EditProfileScreen: Image selected', result.assets[0].uri);
+        setLocalAvatarUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('EditProfileScreen: Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 

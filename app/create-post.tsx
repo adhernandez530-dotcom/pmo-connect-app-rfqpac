@@ -164,46 +164,58 @@ export default function CreatePostScreen() {
 
   const handlePickImage = async () => {
     console.log("CreatePostScreen: User tapped pick image");
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!permissionResult.granted) {
-      Alert.alert("Permission Required", "Please allow access to your photo library");
-      return;
-    }
+      if (!permissionResult.granted) {
+        Alert.alert("Permission Required", "Please allow access to your photo library");
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
-      allowsEditing: true,
-      quality: 0.8,
-      aspect: [4, 3],
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        quality: 0.8,
+        aspect: [4, 3],
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      console.log("CreatePostScreen: Media selected:", result.assets[0].uri);
-      setSelectedMedia(result.assets[0].uri);
-      setMediaType(result.assets[0].type === "video" ? "video" : "image");
+      if (!result.canceled && result.assets[0]) {
+        console.log("CreatePostScreen: Media selected:", result.assets[0].uri);
+        setSelectedMedia(result.assets[0].uri);
+        setMediaType(result.assets[0].type === "video" ? "video" : "image");
+      }
+    } catch (error) {
+      console.error("CreatePostScreen: Error picking image:", error);
+      Alert.alert("Error", "Failed to pick media. Please try again.");
     }
   };
 
   const handleTakePhoto = async () => {
     console.log("CreatePostScreen: User tapped take photo");
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
-    if (!permissionResult.granted) {
-      Alert.alert("Permission Required", "Please allow access to your camera");
-      return;
-    }
+      if (!permissionResult.granted) {
+        Alert.alert("Permission Required", "Please allow access to your camera");
+        return;
+      }
 
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
-      aspect: [4, 3],
-    });
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.8,
+        aspect: [4, 3],
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      console.log("CreatePostScreen: Photo taken:", result.assets[0].uri);
-      setSelectedMedia(result.assets[0].uri);
-      setMediaType("image");
+      if (!result.canceled && result.assets[0]) {
+        console.log("CreatePostScreen: Photo taken:", result.assets[0].uri);
+        setSelectedMedia(result.assets[0].uri);
+        setMediaType("image");
+      }
+    } catch (error) {
+      console.error("CreatePostScreen: Error taking photo:", error);
+      Alert.alert("Error", "Failed to take photo. Please try again.");
     }
   };
 
