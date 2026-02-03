@@ -1,6 +1,7 @@
-
 import Constants from "expo-constants";
-import { auth } from "@/lib/firebase";
+import { Platform } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { BEARER_TOKEN_KEY } from "@/lib/auth";
 
 /**
  * Backend URL is configured in app.json under expo.extra.backendUrl
@@ -16,23 +17,21 @@ export const isBackendConfigured = (): boolean => {
 };
 
 /**
- * Get Firebase ID token for authenticated requests
+ * Get bearer token from platform-specific storage
+ * Web: localStorage
+ * Native: SecureStore
  *
- * @returns Firebase ID token or null if not authenticated
+ * @returns Bearer token or null if not found
  */
-export const getFirebaseToken = async (): Promise<string | null> => {
+export const getBearerToken = async (): Promise<string | null> => {
   try {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      console.error("[API] No authenticated user found");
-      return null;
+    if (Platform.OS === "web") {
+      return localStorage.getItem(BEARER_TOKEN_KEY);
+    } else {
+      return await SecureStore.getItemAsync(BEARER_TOKEN_KEY);
     }
-    
-    const token = await currentUser.getIdToken();
-    console.log("[API] Firebase ID token retrieved");
-    return token;
   } catch (error) {
-    console.error("[API] Error retrieving Firebase token:", error);
+    console.error("[API] Error retrieving bearer token:", error);
     return null;
   }
 };
@@ -57,51 +56,39 @@ export const apiCall = async <T = any>(
   console.log("[API] Calling:", url, options?.method || "GET");
 
   try {
-    // Don't override headers if they're already set (important for FormData)
-    const headers = options?.headers || {};
-    
-    const response = await fetch(url, {
+    const fetchOptions: RequestInit = {
       ...options,
-      headers,
-    });
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    };
 
-    console.log("[API] Response status:", response.status, response.statusText);
+    console.log("[API] Fetch options:", fetchOptions);
+
+    // Always send the token if we have it (needed for cross-domain/iframe support)
+    const token = await getBearerToken();
+    if (token) {
+      fetchOptions.headers = {
+        ...fetchOptions.headers,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+
+    const response = await fetch(url, fetchOptions);
 
     if (!response.ok) {
       const text = await response.text();
       console.error("[API] Error response:", response.status, text);
-      
-      // Parse error message from response
-      let errorMessage = `API error: ${response.status}`;
-      try {
-        const errorData = JSON.parse(text);
-        if (errorData.error) {
-          errorMessage = errorData.error;
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch (e) {
-        // If parsing fails, use the text as is
-        if (text) {
-          errorMessage = text;
-        }
-      }
-      
-      throw new Error(`API error: ${response.status} - ${errorMessage}`);
+      throw new Error(`API error: ${response.status} - ${text}`);
     }
 
     const data = await response.json();
     console.log("[API] Success:", data);
     return data;
-  } catch (error: any) {
+  } catch (error) {
     console.error("[API] Request failed:", error);
-    
-    // Re-throw with better error message
-    if (error.message) {
-      throw error;
-    } else {
-      throw new Error("Network request failed. Please check your connection.");
-    }
+    throw error;
   }
 };
 
@@ -121,9 +108,6 @@ export const apiPost = async <T = any>(
 ): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(data),
   });
 };
@@ -137,9 +121,6 @@ export const apiPut = async <T = any>(
 ): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(data),
   });
 };
@@ -153,9 +134,6 @@ export const apiPatch = async <T = any>(
 ): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(data),
   });
 };
@@ -167,47 +145,34 @@ export const apiPatch = async <T = any>(
 export const apiDelete = async <T = any>(endpoint: string, data: any = {}): Promise<T> => {
   return apiCall<T>(endpoint, {
     method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(data),
   });
 };
 
 /**
  * Authenticated API call helper
- * Uses Firebase ID token for authentication
+ * Automatically retrieves bearer token from storage and adds to Authorization header
  *
  * @param endpoint - API endpoint path
  * @param options - Fetch options (method, headers, body, etc.)
  * @returns Parsed JSON response
- * @throws Error if not authenticated or request fails
+ * @throws Error if token not found or request fails
  */
 export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> => {
-  // Get Firebase ID token
-  console.log("[API] Getting Firebase ID token for authenticated request");
-  const token = await getFirebaseToken();
+  const token = await getBearerToken();
 
   if (!token) {
-    console.error("[API] No Firebase token found");
-    throw new Error("Authentication required. Please sign in.");
+    throw new Error("Authentication token not found. Please sign in.");
   }
-
-  console.log("[API] Firebase token obtained, making authenticated request");
-
-  // Check if body is FormData to avoid setting Content-Type
-  const isFormData = options?.body instanceof FormData;
 
   return apiCall<T>(endpoint, {
     ...options,
     headers: {
-      // Don't override Content-Type if it's FormData or already set
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...options?.headers,
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 };
@@ -221,25 +186,14 @@ export const authenticatedGet = async <T = any>(endpoint: string): Promise<T> =>
 
 /**
  * Authenticated POST request
- * Supports both JSON and FormData
  */
 export const authenticatedPost = async <T = any>(
   endpoint: string,
-  data: any,
-  options?: RequestInit
+  data: any
 ): Promise<T> => {
-  // Check if data is FormData
-  const isFormData = data instanceof FormData;
-  
   return authenticatedApiCall<T>(endpoint, {
     method: "POST",
-    body: isFormData ? data : JSON.stringify(data),
-    ...options,
-    headers: {
-      // Don't set Content-Type for FormData - browser will set it with boundary
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...options?.headers,
-    },
+    body: JSON.stringify(data),
   });
 };
 
@@ -252,9 +206,6 @@ export const authenticatedPut = async <T = any>(
 ): Promise<T> => {
   return authenticatedApiCall<T>(endpoint, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(data),
   });
 };
@@ -268,9 +219,6 @@ export const authenticatedPatch = async <T = any>(
 ): Promise<T> => {
   return authenticatedApiCall<T>(endpoint, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(data),
   });
 };
@@ -282,44 +230,6 @@ export const authenticatedPatch = async <T = any>(
 export const authenticatedDelete = async <T = any>(endpoint: string, data: any = {}): Promise<T> => {
   return authenticatedApiCall<T>(endpoint, {
     method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(data),
-  });
-};
-
-/**
- * Authenticated fetch helper that returns the Response object
- * Useful when you need to check response.ok or handle errors manually
- *
- * @param url - Full URL or endpoint path
- * @param options - Fetch options (method, headers, body, etc.)
- * @returns Response object
- * @throws Error if not authenticated
- */
-export const authenticatedFetch = async (
-  url: string,
-  options?: RequestInit
-): Promise<Response> => {
-  console.log("[API] Authenticated fetch - getting Firebase token");
-  const token = await getFirebaseToken();
-
-  if (!token) {
-    console.error("[API] No Firebase token found for fetch");
-    throw new Error("Authentication required. Please sign in.");
-  }
-
-  console.log("[API] Firebase token obtained for fetch");
-
-  const fullUrl = url.startsWith("http") ? url : `${BACKEND_URL}${url}`;
-  console.log("[API] Authenticated fetch:", fullUrl, options?.method || "GET");
-
-  return fetch(fullUrl, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      'Authorization': `Bearer ${token}`,
-    },
   });
 };

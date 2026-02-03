@@ -1,376 +1,275 @@
-
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal, ScrollView } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+} from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
-import { colors } from "@/styles/commonStyles";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { IconSymbol } from "@/components/IconSymbol";
-import React from "react";
 
-export default function WelcomeScreen() {
-  const { signInWithGoogle, signInWithApple } = useAuth();
+type Mode = "signin" | "signup";
+
+export default function AuthScreen() {
   const router = useRouter();
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isAppleLoading, setIsAppleLoading] = useState(false);
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [setupProvider, setSetupProvider] = useState<'google' | 'apple' | null>(null);
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, signInWithGitHub, loading: authLoading } =
+    useAuth();
 
-  const handleGoogleSignIn = async () => {
-    console.log("WelcomeScreen: User tapped Continue with Google");
-    setIsGoogleLoading(true);
+  const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  if (authLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  const handleEmailAuth = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter email and password");
+      return;
+    }
+
+    setLoading(true);
     try {
-      await signInWithGoogle();
-    } catch (error: any) {
-      console.error("WelcomeScreen: Google sign in error:", error);
-      
-      // Show setup modal if OAuth is not configured
-      if (error.message?.includes('not yet available') || error.message?.includes('not configured')) {
-        setSetupProvider('google');
-        setShowSetupModal(true);
+      if (mode === "signin") {
+        await signInWithEmail(email, password);
+        router.replace("/onboarding");
+      } else {
+        await signUpWithEmail(email, password, name);
+        Alert.alert(
+          "Success",
+          "Account created! Please check your email to verify your account."
+        );
+        router.replace("/onboarding");
       }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Authentication failed");
     } finally {
-      setIsGoogleLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleAppleSignIn = async () => {
-    console.log("WelcomeScreen: User tapped Continue with Apple");
-    setIsAppleLoading(true);
+  const handleSocialAuth = async (provider: "google" | "apple" | "github") => {
+    setLoading(true);
     try {
-      await signInWithApple();
-    } catch (error: any) {
-      console.error("WelcomeScreen: Apple sign in error:", error);
-      
-      // Show setup modal if OAuth is not configured
-      if (error.message?.includes('not yet available') || error.message?.includes('not configured')) {
-        setSetupProvider('apple');
-        setShowSetupModal(true);
+      if (provider === "google") {
+        await signInWithGoogle();
+      } else if (provider === "apple") {
+        await signInWithApple();
+      } else if (provider === "github") {
+        await signInWithGitHub();
       }
+      router.replace("/onboarding");
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Authentication failed");
     } finally {
-      setIsAppleLoading(false);
+      setLoading(false);
     }
   };
-
-  const handleEmailSignUp = () => {
-    console.log("WelcomeScreen: User tapped Sign up with Email");
-    router.push("/email-signup");
-  };
-
-  const handleEmailSignIn = () => {
-    console.log("WelcomeScreen: User tapped Sign in with Email");
-    router.push("/email-signin");
-  };
-
-  const googleButtonText = isGoogleLoading ? "Signing in..." : "Continue with Google";
-  const appleButtonText = isAppleLoading ? "Signing in..." : "Continue with Apple";
-
-  const providerName = setupProvider === 'google' ? 'Google' : setupProvider === 'apple' ? 'Apple' : '';
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.logo}>PutMeOn</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
+          <Text style={styles.title}>
+            {mode === "signin" ? "Sign In" : "Sign Up"}
+          </Text>
 
-      <Text style={styles.title}>Welcome</Text>
-      <Text style={styles.subtitle}>
-        Discover what your friends are into.
-      </Text>
+          {mode === "signup" && (
+            <TextInput
+              style={styles.input}
+              placeholder="Name (optional)"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+          )}
 
-      <TouchableOpacity 
-        style={[styles.primaryButton, isGoogleLoading && styles.buttonDisabled]} 
-        onPress={handleGoogleSignIn}
-        disabled={isGoogleLoading || isAppleLoading}
-      >
-        <Text style={styles.primaryText}>{googleButtonText}</Text>
-      </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-      {Platform.OS === "ios" && (
-        <TouchableOpacity 
-          style={[styles.appleButton, isAppleLoading && styles.buttonDisabled]} 
-          onPress={handleAppleSignIn}
-          disabled={isGoogleLoading || isAppleLoading}
-        >
-          <Text style={styles.appleText}>{appleButtonText}</Text>
-        </TouchableOpacity>
-      )}
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
 
-      <Text style={styles.divider}>or</Text>
-
-      <TouchableOpacity onPress={handleEmailSignUp}>
-        <Text style={styles.link}>Sign up with Email</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={handleEmailSignIn}>
-        <Text style={styles.linkSecondary}>Already have an account? Sign in</Text>
-      </TouchableOpacity>
-
-      {/* Firebase Setup Modal */}
-      <Modal
-        visible={showSetupModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowSetupModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <IconSymbol 
-                ios_icon_name="exclamationmark.triangle.fill" 
-                android_material_icon_name="warning" 
-                size={32} 
-                color={colors.primary} 
-              />
-              <Text style={styles.modalTitle}>{providerName} Sign In Setup Required</Text>
-            </View>
-
-            <ScrollView style={styles.modalBody}>
-              <Text style={styles.modalText}>
-                To enable {providerName} sign in, you need to configure Firebase Authentication:
+          <TouchableOpacity
+            style={[styles.primaryButton, loading && styles.buttonDisabled]}
+            onPress={handleEmailAuth}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                {mode === "signin" ? "Sign In" : "Sign Up"}
               </Text>
+            )}
+          </TouchableOpacity>
 
-              <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>1. Firebase Console Setup</Text>
-                <Text style={styles.stepText}>
-                  • Go to Firebase Console (console.firebase.google.com)
-                </Text>
-                <Text style={styles.stepText}>
-                  • Select your project or create a new one
-                </Text>
-                <Text style={styles.stepText}>
-                  • Navigate to Authentication → Sign-in method
-                </Text>
-                <Text style={styles.stepText}>
-                  • Enable {providerName} as a sign-in provider
-                </Text>
-              </View>
+          <TouchableOpacity
+            style={styles.switchModeButton}
+            onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
+          >
+            <Text style={styles.switchModeText}>
+              {mode === "signin"
+                ? "Don't have an account? Sign Up"
+                : "Already have an account? Sign In"}
+            </Text>
+          </TouchableOpacity>
 
-              {setupProvider === 'google' && (
-                <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>2. Google OAuth Setup</Text>
-                  <Text style={styles.stepText}>
-                    • Create OAuth 2.0 credentials in Google Cloud Console
-                  </Text>
-                  <Text style={styles.stepText}>
-                    • Add authorized domains in Firebase
-                  </Text>
-                  <Text style={styles.stepText}>
-                    • Configure OAuth consent screen
-                  </Text>
-                </View>
-              )}
-
-              {setupProvider === 'apple' && (
-                <View style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>2. Apple Sign In Setup</Text>
-                  <Text style={styles.stepText}>
-                    • Enable Sign in with Apple in Apple Developer Portal
-                  </Text>
-                  <Text style={styles.stepText}>
-                    • Configure Service ID and Key
-                  </Text>
-                  <Text style={styles.stepText}>
-                    • Add configuration to Firebase
-                  </Text>
-                </View>
-              )}
-
-              <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>3. Update app.json</Text>
-                <Text style={styles.stepText}>
-                  Add your Firebase configuration to app.json:
-                </Text>
-                <View style={styles.codeBlock}>
-                  <Text style={styles.codeText}>
-                    "extra": {'{'}
-                  </Text>
-                  <Text style={styles.codeText}>
-                    {"  "}firebaseApiKey: "YOUR_API_KEY",
-                  </Text>
-                  <Text style={styles.codeText}>
-                    {"  "}firebaseProjectId: "YOUR_PROJECT_ID",
-                  </Text>
-                  <Text style={styles.codeText}>
-                    {"  "}...
-                  </Text>
-                  <Text style={styles.codeText}>
-                    {'}'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.stepContainer}>
-                <Text style={styles.stepTitle}>4. Rebuild the App</Text>
-                <Text style={styles.stepText}>
-                  After configuration, rebuild your app to apply changes.
-                </Text>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.modalButton}
-                onPress={() => setShowSetupModal(false)}
-              >
-                <Text style={styles.modalButtonText}>Got it</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
           </View>
+
+          <TouchableOpacity
+            style={styles.socialButton}
+            onPress={() => handleSocialAuth("google")}
+            disabled={loading}
+          >
+            <Text style={styles.socialButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {Platform.OS === "ios" && (
+            <TouchableOpacity
+              style={[styles.socialButton, styles.appleButton]}
+              onPress={() => handleSocialAuth("apple")}
+              disabled={loading}
+            >
+              <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+                Continue with Apple
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
-      </Modal>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
-    backgroundColor: colors.background,
+    backgroundColor: "#fff",
   },
-  logo: {
-    fontSize: 48,
-    fontWeight: "bold",
-    color: colors.primary,
-    marginBottom: 16,
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
+    marginBottom: 32,
     textAlign: "center",
-    marginBottom: 48,
+    color: "#000",
+  },
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    fontSize: 16,
+    backgroundColor: "#fff",
   },
   primaryButton: {
-    width: "100%",
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    height: 50,
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginTop: 8,
   },
-  primaryText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  appleButton: {
-    width: "100%",
-    backgroundColor: "#000000",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  appleText: {
-    color: "#FFFFFF",
+  primaryButtonText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  divider: {
+  switchModeButton: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  switchModeText: {
+    color: "#007AFF",
     fontSize: 14,
-    color: colors.textSecondary,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 24,
   },
-  link: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: "600",
-    marginBottom: 16,
-  },
-  linkSecondary: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  modalOverlay: {
+  dividerLine: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    height: 1,
+    backgroundColor: "#ddd",
   },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalText: {
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 20,
-    lineHeight: 24,
-  },
-  stepContainer: {
-    marginBottom: 24,
-  },
-  stepTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  stepText: {
+  dividerText: {
+    marginHorizontal: 12,
+    color: "#666",
     fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 8,
-    paddingLeft: 8,
-    lineHeight: 20,
   },
-  codeBlock: {
-    backgroundColor: colors.cardBackground,
-    padding: 12,
+  socialButton: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#ddd",
     borderRadius: 8,
-    marginTop: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    backgroundColor: "#fff",
   },
-  codeText: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontSize: 12,
-    color: colors.text,
-    lineHeight: 18,
-  },
-  modalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  modalButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    color: '#FFFFFF',
+  socialButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    color: "#000",
+    fontWeight: "500",
+  },
+  appleButton: {
+    backgroundColor: "#000",
+    borderColor: "#000",
+  },
+  appleButtonText: {
+    color: "#fff",
   },
 });

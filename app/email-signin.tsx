@@ -19,7 +19,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 
 export default function EmailSignInScreen() {
   const router = useRouter();
-  const { signInWithEmail } = useAuth();
+  const { signIn } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -87,8 +87,8 @@ export default function EmailSignInScreen() {
 
     setLoading(true);
     try {
-      console.log("EmailSignIn: Calling signInWithEmail");
-      await signInWithEmail(email, password);
+      console.log("EmailSignIn: Calling signIn with email/password");
+      await signIn.email({ email, password });
       
       console.log("EmailSignIn: Sign in successful");
       // Navigation is handled by the auth state listener in _layout.tsx

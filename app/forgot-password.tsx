@@ -13,13 +13,12 @@ import {
   Modal,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext";
+import { apiPost } from "@/utils/api";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { forgotPassword } = useAuth();
   
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,8 +69,8 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      console.log("ForgotPassword: Calling forgotPassword");
-      await forgotPassword(email);
+      console.log("ForgotPassword: Sending password reset request to backend");
+      await apiPost("/api/auth/forgot-password", { email });
       
       console.log("ForgotPassword: Password reset email sent successfully");
       setSuccessModalVisible(true);

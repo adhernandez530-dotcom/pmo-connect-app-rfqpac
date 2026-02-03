@@ -19,7 +19,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 
 export default function EmailSignUpScreen() {
   const router = useRouter();
-  const { signUpWithEmail } = useAuth();
+  const { signUp } = useAuth();
   
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -136,16 +136,16 @@ export default function EmailSignUpScreen() {
 
     setLoading(true);
     try {
-      console.log("EmailSignUp: Calling signUpWithEmail");
-      await signUpWithEmail(email, password, name);
+      console.log("EmailSignUp: Calling signUp with email/password");
+      await signUp.email({ email, password, name });
       
       console.log("EmailSignUp: Sign up successful");
       setSuccessModalVisible(true);
       
-      // Navigate to verify email screen after a short delay
+      // Navigate to onboarding after a short delay
       setTimeout(() => {
         setSuccessModalVisible(false);
-        router.replace("/verify-email");
+        router.replace("/onboarding");
       }, 2000);
     } catch (error: any) {
       console.error("EmailSignUp: Sign up error:", error);
@@ -366,7 +366,7 @@ export default function EmailSignUpScreen() {
             />
             <Text style={styles.modalTitle}>Success!</Text>
             <Text style={styles.modalMessage}>
-              Account created successfully. Please verify your email to continue.
+              Account created successfully. Let's set up your profile!
             </Text>
           </View>
         </View>
