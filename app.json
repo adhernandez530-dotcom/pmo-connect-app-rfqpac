@@ -1,8 +1,7 @@
-
 {
   "expo": {
     "name": "PMO Connect",
-    "slug": "pmo-connect",
+    "slug": "PMO Connect",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/natively-dark.png",
@@ -105,7 +104,7 @@
         }
       ]
     ],
-    "scheme": "pmoconnect",
+    "scheme": "PMO Connect",
     "experiments": {
       "typedRoutes": true
     },

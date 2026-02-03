@@ -64,7 +64,7 @@ export default function WelcomeScreen() {
   const googleButtonText = isGoogleLoading ? "Signing in..." : "Continue with Google";
   const appleButtonText = isAppleLoading ? "Signing in..." : "Continue with Apple";
 
-  const providerName = setupProvider === 'google' ? 'Google' : 'Apple';
+  const providerName = setupProvider === 'google' ? 'Google' : setupProvider === 'apple' ? 'Apple' : '';
 
   return (
     <View style={styles.container}>
