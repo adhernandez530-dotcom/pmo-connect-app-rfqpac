@@ -32,6 +32,15 @@ const CONTEXT_SENSITIVE_WORDS = [
 ];
 
 /**
+ * Escape special regex characters in a string
+ * @param str - The string to escape
+ * @returns Escaped string safe for use in RegExp
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Check if text contains inappropriate content
  * @param text - The text to check
  * @returns Object with isClean flag and list of found inappropriate words
@@ -51,8 +60,10 @@ export function checkContent(text: string): {
 
   // Check for inappropriate words
   for (const word of INAPPROPRIATE_WORDS) {
+    // Escape special regex characters to prevent "Nothing to repeat" errors
+    const escapedWord = escapeRegExp(word);
     // Use word boundaries to avoid false positives (e.g., "class" containing "ass")
-    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    const regex = new RegExp(`\\b${escapedWord}\\b`, 'i');
     if (regex.test(lowerText)) {
       foundWords.push(word);
       
@@ -85,7 +96,9 @@ export function sanitizeContent(text: string): string {
   let sanitized = text;
 
   for (const word of INAPPROPRIATE_WORDS) {
-    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    // Escape special regex characters
+    const escapedWord = escapeRegExp(word);
+    const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi');
     sanitized = sanitized.replace(regex, (match) => {
       // Replace with asterisks, keeping first letter
       return match[0] + '*'.repeat(match.length - 1);
