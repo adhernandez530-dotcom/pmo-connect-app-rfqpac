@@ -1,12 +1,12 @@
 
-import { useAuth } from "@/contexts/AuthContext";
-import { IconSymbol } from "@/components/IconSymbol";
-import { authenticatedFetch, BACKEND_URL, apiGet } from "@/utils/api";
 import React, { useState, useEffect } from "react";
-import { colors } from "@/styles/commonStyles";
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Modal, ActivityIndicator, Linking } from "react-native";
 import { Stack, useRouter } from "expo-router";
+import { authenticatedFetch, BACKEND_URL, apiGet } from "@/utils/api";
+import { colors } from "@/styles/commonStyles";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Modal, ActivityIndicator, Linking } from "react-native";
+import { IconSymbol } from "@/components/IconSymbol";
 
 interface OAuthProvider {
   enabled: boolean;
@@ -22,554 +22,374 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? 48 : 0,
   },
-  scrollView: {
-    flex: 1,
+  scrollContent: {
+    padding: 16,
   },
   section: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 12,
   },
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.backgroundAlt,
-    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderRadius: 8,
     marginBottom: 8,
   },
-  settingItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  settingItemText: {
+  settingLabel: {
     fontSize: 16,
     color: colors.text,
-    fontWeight: '500',
   },
-  settingItemSubtext: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
+  dangerButton: {
+    backgroundColor: "#FF3B30",
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 8,
   },
-  dangerItem: {
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-  },
-  dangerText: {
-    color: colors.error,
+  dangerButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    backgroundColor: colors.backgroundAlt,
+    backgroundColor: colors.background,
     borderRadius: 16,
     padding: 24,
-    width: '100%',
+    width: "80%",
     maxWidth: 400,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.text,
     marginBottom: 16,
-    textAlign: 'center',
   },
   modalText: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textSecondary,
     marginBottom: 16,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   input: {
-    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    padding: 12,
     fontSize: 16,
     color: colors.text,
     marginBottom: 16,
   },
   modalButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
+    padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  modalButtonCancel: {
-    backgroundColor: colors.card,
+  modalButtonPrimary: {
+    backgroundColor: colors.primary,
   },
-  modalButtonConfirm: {
-    backgroundColor: colors.error,
+  modalButtonSecondary: {
+    backgroundColor: colors.border,
   },
   modalButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  modalButtonTextPrimary: {
+    color: "#fff",
+  },
+  modalButtonTextSecondary: {
     color: colors.text,
   },
-  modalButtonTextConfirm: {
-    color: '#FFFFFF',
-  },
-  oauthDebugSection: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-  },
-  oauthDebugTitle: {
+  oauthStatus: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
-  oauthProviderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
+  oauthConfigured: {
+    color: "#34C759",
   },
-  oauthProviderName: {
-    fontSize: 14,
-    color: colors.text,
-    textTransform: 'capitalize',
-  },
-  oauthStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  oauthStatusConfigured: {
-    backgroundColor: 'rgba(0, 217, 163, 0.2)',
-  },
-  oauthStatusNotConfigured: {
-    backgroundColor: 'rgba(255, 59, 48, 0.2)',
-  },
-  oauthStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  oauthStatusTextConfigured: {
-    color: colors.primary,
-  },
-  oauthStatusTextNotConfigured: {
-    color: colors.error,
-  },
-  oauthSetupButton: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: colors.primary,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  oauthSetupButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.background,
+  oauthNotConfigured: {
+    color: "#FF9500",
   },
 });
 
 export default function SettingsScreen() {
-  const { signOut } = useAuth();
   const router = useRouter();
+  const { signOut } = useFirebaseAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
-  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [oauthConfig, setOauthConfig] = useState<OAuthConfig | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
+  const [oauthConfig, setOauthConfig] = useState<OAuthConfig>({});
 
   useEffect(() => {
-    console.log('SettingsScreen: Loading OAuth status');
     loadOAuthStatus();
   }, []);
 
   const loadOAuthStatus = async () => {
     try {
-      const config = await apiGet<OAuthConfig>('/api/oauth/config');
-      console.log('SettingsScreen: OAuth config loaded:', config);
+      const config = await apiGet<OAuthConfig>("/api/oauth/config");
       setOauthConfig(config);
+      console.log("OAuth config loaded:", config);
     } catch (error) {
-      console.error('SettingsScreen: Error loading OAuth status:', error);
+      console.error("Failed to load OAuth config:", error);
     }
   };
 
   const handleLogout = async () => {
-    console.log('SettingsScreen: User confirmed sign out');
-    setShowSignOutConfirm(false);
+    console.log("User tapped Logout button");
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
     try {
+      console.log("User confirmed logout");
       await signOut();
-      console.log('SettingsScreen: Sign out successful, redirecting to auth');
-      router.replace('/auth');
+      console.log("Logout successful, redirecting to firebase-auth");
+      router.replace("/firebase-auth");
     } catch (error) {
-      console.error('SettingsScreen: Sign out error:', error);
+      console.error("Logout error:", error);
+    } finally {
+      setShowLogoutConfirm(false);
     }
   };
 
   const handleRequestVerificationCode = async () => {
-    console.log('SettingsScreen: User requested deactivation verification code');
+    setDeactivateLoading(true);
     try {
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/account/request-deactivation-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      await authenticatedFetch(`${BACKEND_URL}/api/account/request-deactivation-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-
-      if (response.ok) {
-        console.log('SettingsScreen: Verification code sent successfully');
-        setShowDeactivateModal(true);
-      } else {
-        console.error('SettingsScreen: Failed to send verification code');
-      }
+      console.log("Verification code sent");
     } catch (error) {
-      console.error('SettingsScreen: Error requesting verification code:', error);
+      console.error("Failed to request verification code:", error);
+    } finally {
+      setDeactivateLoading(false);
     }
   };
 
   const handleVerifyAndDeactivate = async () => {
-    console.log('SettingsScreen: User submitted verification code');
-    setIsVerifying(true);
+    if (!verificationCode) {
+      return;
+    }
+
+    setDeactivateLoading(true);
     try {
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/account/deactivate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      await authenticatedFetch(`${BACKEND_URL}/api/account/deactivate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: verificationCode }),
       });
-
-      if (response.ok) {
-        console.log('SettingsScreen: Account deactivated successfully');
-        setShowDeactivateModal(false);
-        await signOut();
-        router.replace('/auth');
-      } else {
-        console.error('SettingsScreen: Invalid verification code');
-      }
+      console.log("Account deactivated");
+      setShowDeactivateModal(false);
+      await signOut();
+      router.replace("/firebase-auth");
     } catch (error) {
-      console.error('SettingsScreen: Error deactivating account:', error);
+      console.error("Failed to deactivate account:", error);
     } finally {
-      setIsVerifying(false);
+      setDeactivateLoading(false);
     }
   };
 
   const handleDeactivateAccount = () => {
-    console.log('SettingsScreen: User tapped Deactivate Account');
-    handleRequestVerificationCode();
+    console.log("User tapped Deactivate Account button");
+    setShowDeactivateModal(true);
   };
 
   const handlePrivacyPolicy = () => {
-    console.log('SettingsScreen: User tapped Privacy Policy');
-    router.push('/privacy-policy');
+    console.log("User tapped Privacy Policy");
+    router.push("/privacy-policy");
   };
 
   const handleTermsOfService = () => {
-    console.log('SettingsScreen: User tapped Terms of Service');
-    router.push('/terms-of-service');
+    console.log("User tapped Terms of Service");
+    router.push("/terms-of-service");
   };
 
   const handleNotificationSettings = () => {
-    console.log('SettingsScreen: User tapped Notification Settings');
-    router.push('/notification-settings');
+    console.log("User tapped Notification Settings");
+    router.push("/notification-settings");
   };
 
   const handlePermissionsSettings = () => {
-    console.log('SettingsScreen: User tapped Permissions Settings');
-    router.push('/permissions-settings');
+    console.log("User tapped Permissions Settings");
+    router.push("/permissions-settings");
   };
 
   const handlePrivacySettings = () => {
-    console.log('SettingsScreen: User tapped Privacy Settings');
-    router.push('/privacy-settings');
+    console.log("User tapped Privacy Settings");
+    router.push("/privacy-settings");
   };
 
   const handleOpenSetupGuide = (provider: "google" | "apple") => {
-    console.log('SettingsScreen: User tapped OAuth setup guide for', provider);
+    console.log(`User tapped ${provider} setup guide`);
     const url = provider === "google"
-      ? "https://console.cloud.google.com/apis/credentials"
-      : "https://developer.apple.com/account/resources/identifiers/list";
+      ? "https://firebase.google.com/docs/auth/web/google-signin"
+      : "https://firebase.google.com/docs/auth/ios/apple";
     Linking.openURL(url);
   };
 
-  const signOutConfirmTitle = "Sign Out";
-  const signOutConfirmMessage = "Are you sure you want to sign out?";
+  const googleConfigured = oauthConfig.google?.configured;
+  const appleConfigured = oauthConfig.apple?.configured;
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Settings',
-          headerShown: true,
-          headerBackTitle: 'Back',
-        }}
-      />
-      <View style={styles.container}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
-            <TouchableOpacity style={styles.settingItem} onPress={handlePrivacySettings}>
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="lock.fill"
-                  android_material_icon_name="lock"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.settingItemText}>Privacy Settings</Text>
-              </View>
-              <IconSymbol
-                ios_icon_name="chevron.right"
-                android_material_icon_name="chevron-right"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.settingItem} onPress={handleNotificationSettings}>
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="bell.fill"
-                  android_material_icon_name="notifications"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.settingItemText}>Notification Settings</Text>
-              </View>
-              <IconSymbol
-                ios_icon_name="chevron.right"
-                android_material_icon_name="chevron-right"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.settingItem} onPress={handlePermissionsSettings}>
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="checkmark.shield.fill"
-                  android_material_icon_name="verified-user"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.settingItemText}>Permissions</Text>
-              </View>
-              <IconSymbol
-                ios_icon_name="chevron.right"
-                android_material_icon_name="chevron-right"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/blocked-users')}>
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="hand.raised.fill"
-                  android_material_icon_name="block"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.settingItemText}>Blocked Users</Text>
-              </View>
-              <IconSymbol
-                ios_icon_name="chevron.right"
-                android_material_icon_name="chevron-right"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: "Settings", headerShown: true }} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <TouchableOpacity style={styles.settingItem} onPress={handleNotificationSettings}>
+            <Text style={styles.settingLabel}>Notification Settings</Text>
+            <IconSymbol ios_icon_name="chevron.right" android_material_icon_name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingItem} onPress={handlePrivacySettings}>
+            <Text style={styles.settingLabel}>Privacy Settings</Text>
+            <IconSymbol ios_icon_name="chevron.right" android_material_icon_name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingItem} onPress={handlePermissionsSettings}>
+            <Text style={styles.settingLabel}>Permissions</Text>
+            <IconSymbol ios_icon_name="chevron.right" android_material_icon_name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Legal</Text>
-            <TouchableOpacity style={styles.settingItem} onPress={handlePrivacyPolicy}>
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="doc.text.fill"
-                  android_material_icon_name="description"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.settingItemText}>Privacy Policy</Text>
-              </View>
-              <IconSymbol
-                ios_icon_name="chevron.right"
-                android_material_icon_name="chevron-right"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.settingItem} onPress={handleTermsOfService}>
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="doc.text.fill"
-                  android_material_icon_name="description"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.settingItemText}>Terms of Service</Text>
-              </View>
-              <IconSymbol
-                ios_icon_name="chevron.right"
-                android_material_icon_name="chevron-right"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Authentication (Firebase)</Text>
+          <View style={styles.settingItem}>
+            <View>
+              <Text style={styles.settingLabel}>Google Sign-In</Text>
+              <Text style={[styles.oauthStatus, googleConfigured ? styles.oauthConfigured : styles.oauthNotConfigured]}>
+                {googleConfigured ? "✓ Configured" : "⚠ Not configured"}
+              </Text>
+            </View>
+            {!googleConfigured && (
+              <TouchableOpacity onPress={() => handleOpenSetupGuide("google")}>
+                <Text style={{ color: colors.primary }}>Setup Guide</Text>
+              </TouchableOpacity>
+            )}
           </View>
-
-          {__DEV__ && oauthConfig && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Developer Tools</Text>
-              <View style={styles.oauthDebugSection}>
-                <Text style={styles.oauthDebugTitle}>OAuth Configuration Status</Text>
-                {Object.entries(oauthConfig).map(([provider, config]) => (
-                  <View key={provider}>
-                    <View style={styles.oauthProviderRow}>
-                      <Text style={styles.oauthProviderName}>{provider}</Text>
-                      <View
-                        style={[
-                          styles.oauthStatusBadge,
-                          config.configured
-                            ? styles.oauthStatusConfigured
-                            : styles.oauthStatusNotConfigured,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.oauthStatusText,
-                            config.configured
-                              ? styles.oauthStatusTextConfigured
-                              : styles.oauthStatusTextNotConfigured,
-                          ]}
-                        >
-                          {config.configured ? 'Configured' : 'Not Configured'}
-                        </Text>
-                      </View>
-                    </View>
-                    {!config.configured && (
-                      <TouchableOpacity
-                        style={styles.oauthSetupButton}
-                        onPress={() => handleOpenSetupGuide(provider as "google" | "apple")}
-                      >
-                        <Text style={styles.oauthSetupButtonText}>Setup Guide</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ))}
+          {Platform.OS === "ios" && (
+            <View style={styles.settingItem}>
+              <View>
+                <Text style={styles.settingLabel}>Apple Sign-In</Text>
+                <Text style={[styles.oauthStatus, appleConfigured ? styles.oauthConfigured : styles.oauthNotConfigured]}>
+                  {appleConfigured ? "✓ Configured" : "⚠ Not configured"}
+                </Text>
               </View>
+              {!appleConfigured && (
+                <TouchableOpacity onPress={() => handleOpenSetupGuide("apple")}>
+                  <Text style={{ color: colors.primary }}>Setup Guide</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
+        </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Actions</Text>
-            <TouchableOpacity 
-              style={styles.settingItem} 
-              onPress={() => setShowSignOutConfirm(true)}
-            >
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="arrow.right.square.fill"
-                  android_material_icon_name="logout"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={styles.settingItemText}>Sign Out</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.settingItem, styles.dangerItem]} onPress={handleDeactivateAccount}>
-              <View style={styles.settingItemLeft}>
-                <IconSymbol
-                  ios_icon_name="trash.fill"
-                  android_material_icon_name="delete"
-                  size={20}
-                  color={colors.error}
-                />
-                <View>
-                  <Text style={[styles.settingItemText, styles.dangerText]}>Deactivate Account</Text>
-                  <Text style={styles.settingItemSubtext}>This action is permanent</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal</Text>
+          <TouchableOpacity style={styles.settingItem} onPress={handlePrivacyPolicy}>
+            <Text style={styles.settingLabel}>Privacy Policy</Text>
+            <IconSymbol ios_icon_name="chevron.right" android_material_icon_name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingItem} onPress={handleTermsOfService}>
+            <Text style={styles.settingLabel}>Terms of Service</Text>
+            <IconSymbol ios_icon_name="chevron.right" android_material_icon_name="chevron-right" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
-        <ConfirmModal
-          visible={showSignOutConfirm}
-          title={signOutConfirmTitle}
-          message={signOutConfirmMessage}
-          confirmText="Sign Out"
-          cancelText="Cancel"
-          destructive
-          onConfirm={handleLogout}
-          onCancel={() => setShowSignOutConfirm(false)}
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Danger Zone</Text>
+          <TouchableOpacity style={styles.dangerButton} onPress={handleLogout}>
+            <Text style={styles.dangerButtonText}>Logout</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.dangerButton} onPress={handleDeactivateAccount}>
+            <Text style={styles.dangerButtonText}>Deactivate Account</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
-        <Modal
-          visible={showDeactivateModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowDeactivateModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Deactivate Account</Text>
-              <Text style={styles.modalText}>
-                We've sent a verification code to your email. Please enter it below to confirm account deactivation.
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter verification code"
-                placeholderTextColor={colors.textSecondary}
-                value={verificationCode}
-                onChangeText={setVerificationCode}
-                keyboardType="number-pad"
-                maxLength={6}
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonCancel]}
-                  onPress={() => setShowDeactivateModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonConfirm]}
-                  onPress={handleVerifyAndDeactivate}
-                  disabled={isVerifying || verificationCode.length !== 6}
-                >
-                  {isVerifying ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={[styles.modalButtonText, styles.modalButtonTextConfirm]}>
-                      Deactivate
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+      <ConfirmModal
+        visible={showLogoutConfirm}
+        title="Logout"
+        message="Are you sure you want to logout?"
+        confirmText="Logout"
+        cancelText="Cancel"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
+
+      <Modal visible={showDeactivateModal} transparent animationType="fade" onRequestClose={() => setShowDeactivateModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Deactivate Account</Text>
+            <Text style={styles.modalText}>
+              Enter the verification code sent to your email to deactivate your account. This action cannot be undone.
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Verification Code"
+              placeholderTextColor={colors.textSecondary}
+              value={verificationCode}
+              onChangeText={setVerificationCode}
+              keyboardType="number-pad"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSecondary]}
+                onPress={() => setShowDeactivateModal(false)}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={handleRequestVerificationCode}
+                disabled={deactivateLoading}
+              >
+                {deactivateLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>Send Code</Text>
+                )}
+              </TouchableOpacity>
             </View>
+            {verificationCode.length > 0 && (
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 12 }]}
+                onPress={handleVerifyAndDeactivate}
+                disabled={deactivateLoading}
+              >
+                {deactivateLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>Deactivate</Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
-        </Modal>
-      </View>
-    </>
+        </View>
+      </Modal>
+    </View>
   );
 }
