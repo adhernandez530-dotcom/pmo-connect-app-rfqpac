@@ -4,7 +4,7 @@ import { Stack, useRouter } from "expo-router";
 import { authenticatedFetch, BACKEND_URL, apiGet } from "@/utils/api";
 import { colors } from "@/styles/commonStyles";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Modal, ActivityIndicator, Linking } from "react-native";
 import { IconSymbol } from "@/components/IconSymbol";
 
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { signOut } = useFirebaseAuth();
+  const { signOut } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
@@ -166,8 +166,8 @@ export default function SettingsScreen() {
     try {
       console.log("User confirmed logout");
       await signOut();
-      console.log("Logout successful, redirecting to firebase-auth");
-      router.replace("/firebase-auth");
+      console.log("Logout successful, redirecting to auth");
+      router.replace("/auth");
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -206,7 +206,7 @@ export default function SettingsScreen() {
       console.log("Account deactivated");
       setShowDeactivateModal(false);
       await signOut();
-      router.replace("/firebase-auth");
+      router.replace("/auth");
     } catch (error) {
       console.error("Failed to deactivate account:", error);
     } finally {
@@ -276,7 +276,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Authentication (Firebase)</Text>
+          <Text style={styles.sectionTitle}>Authentication</Text>
           <View style={styles.settingItem}>
             <View>
               <Text style={styles.settingLabel}>Google Sign-In</Text>
