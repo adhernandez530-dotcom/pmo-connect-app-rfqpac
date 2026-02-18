@@ -247,8 +247,8 @@ export default function SettingsScreen() {
   const handleOpenSetupGuide = (provider: "google" | "apple") => {
     console.log(`User tapped ${provider} setup guide`);
     const url = provider === "google"
-      ? "https://firebase.google.com/docs/auth/web/google-signin"
-      : "https://firebase.google.com/docs/auth/ios/apple";
+      ? "https://better-auth.com/docs/authentication/social"
+      : "https://better-auth.com/docs/authentication/social";
     Linking.openURL(url);
   };
 
