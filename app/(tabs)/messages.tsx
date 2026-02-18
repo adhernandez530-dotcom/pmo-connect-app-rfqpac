@@ -1,6 +1,6 @@
 
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Platform, ImageSourcePropType, Modal, Dimensions } from "react-native";
-import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
+import { authenticatedGet, authenticatedPut, authenticatedDelete } from "@/utils/api";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useRouter } from "expo-router";
@@ -51,8 +51,7 @@ export default function MessagesScreen() {
   const loadConversations = useCallback(async () => {
     try {
       console.log('MessagesScreen: Fetching conversations');
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations${showArchived ? '?archived=true' : ''}`);
-      const data = await response.json();
+      const data = await authenticatedGet<Conversation[]>(`/api/messages/conversations${showArchived ? '?archived=true' : ''}`);
       console.log('MessagesScreen: Conversations loaded:', data);
       setConversations(data);
     } catch (error) {
@@ -68,11 +67,7 @@ export default function MessagesScreen() {
   const handleMarkRead = useCallback(async (userId: string) => {
     console.log('MessagesScreen: Marking conversation as read:', userId);
     try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/read`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      await authenticatedPut(`/api/messages/conversations/${userId}/read`, {});
       loadConversations();
     } catch (error) {
       console.error('MessagesScreen: Error marking as read:', error);
@@ -82,11 +77,7 @@ export default function MessagesScreen() {
   const handleMarkUnread = useCallback(async (userId: string) => {
     console.log('MessagesScreen: Marking conversation as unread:', userId);
     try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/unread`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      await authenticatedPut(`/api/messages/conversations/${userId}/unread`, {});
       loadConversations();
     } catch (error) {
       console.error('MessagesScreen: Error marking as unread:', error);
@@ -96,11 +87,7 @@ export default function MessagesScreen() {
   const handleMute = useCallback(async (userId: string) => {
     console.log('MessagesScreen: Toggling mute for conversation:', userId);
     try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/mute`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      await authenticatedPut(`/api/messages/conversations/${userId}/mute`, {});
       loadConversations();
     } catch (error) {
       console.error('MessagesScreen: Error toggling mute:', error);
@@ -110,9 +97,7 @@ export default function MessagesScreen() {
   const handleDelete = useCallback(async (userId: string) => {
     console.log('MessagesScreen: Deleting conversation:', userId);
     try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}`, {
-        method: 'DELETE'
-      });
+      await authenticatedDelete(`/api/messages/conversations/${userId}`);
       loadConversations();
     } catch (error) {
       console.error('MessagesScreen: Error deleting conversation:', error);
@@ -122,11 +107,7 @@ export default function MessagesScreen() {
   const handleArchive = useCallback(async (userId: string) => {
     console.log('MessagesScreen: Archiving conversation:', userId);
     try {
-      await authenticatedFetch(`${BACKEND_URL}/api/messages/conversations/${userId}/archive`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      await authenticatedPut(`/api/messages/conversations/${userId}/archive`, {});
       loadConversations();
     } catch (error) {
       console.error('MessagesScreen: Error archiving conversation:', error);

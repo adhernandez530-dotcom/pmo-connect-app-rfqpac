@@ -20,7 +20,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
+import { authenticatedGet, authenticatedPost, authenticatedPut, authenticatedDelete, BACKEND_URL, getBearerToken } from "@/utils/api";
 import { validateContent } from "@/utils/contentModeration";
 
 interface Service {
@@ -92,13 +92,7 @@ export default function CreatePostScreen() {
   const loadServices = async () => {
     try {
       console.log("CreatePostScreen: Fetching user services");
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/services`);
-      if (!response.ok) {
-        console.log("CreatePostScreen: Services API returned error");
-        setServices([]);
-        return;
-      }
-      const data = await response.json();
+      const data = await authenticatedGet<Service[]>('/api/profile/services');
       console.log("CreatePostScreen: Services loaded:", data);
       if (Array.isArray(data)) {
         setServices(data);
@@ -112,13 +106,7 @@ export default function CreatePostScreen() {
   const loadKnowledge = async () => {
     try {
       console.log("CreatePostScreen: Fetching user knowledge");
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/knowledge`);
-      if (!response.ok) {
-        console.log("CreatePostScreen: Knowledge API returned error");
-        setKnowledge([]);
-        return;
-      }
-      const data = await response.json();
+      const data = await authenticatedGet<Knowledge[]>('/api/profile/knowledge');
       console.log("CreatePostScreen: Knowledge loaded:", data);
       if (Array.isArray(data)) {
         setKnowledge(data);
@@ -132,12 +120,7 @@ export default function CreatePostScreen() {
   const loadDraft = async (id: string) => {
     try {
       console.log("CreatePostScreen: Loading draft:", id);
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/posts/drafts`);
-      if (!response.ok) {
-        console.log("CreatePostScreen: Failed to load drafts");
-        return;
-      }
-      const drafts = await response.json();
+      const drafts = await authenticatedGet<any[]>('/api/posts/drafts');
       const draft = drafts.find((d: any) => d.id === id);
       if (draft) {
         setContent(draft.content || "");
@@ -148,14 +131,15 @@ export default function CreatePostScreen() {
           // Load tagged users info
           const users = await Promise.all(
             draft.taggedUserIds.map(async (userId: string) => {
-              const userResponse = await authenticatedFetch(`${BACKEND_URL}/api/users/${userId}`);
-              if (userResponse.ok) {
-                return await userResponse.json();
+              try {
+                const user = await authenticatedGet<User>(`/api/users/${userId}`);
+                return user;
+              } catch {
+                return null;
               }
-              return null;
             })
           );
-          setTaggedUsers(users.filter((u) => u !== null));
+          setTaggedUsers(users.filter((u): u is User => u !== null));
         }
       }
     } catch (error) {
@@ -268,14 +252,9 @@ export default function CreatePostScreen() {
     setIsSearchingUsers(true);
     try {
       console.log("CreatePostScreen: Searching users:", query);
-      const response = await authenticatedFetch(
-        `${BACKEND_URL}/api/users/search?q=${encodeURIComponent(query)}`
-      );
-      if (response.ok) {
-        const users = await response.json();
-        console.log("CreatePostScreen: Users found:", users);
-        setSearchedUsers(users);
-      }
+      const users = await authenticatedGet<User[]>(`/api/users/search?q=${encodeURIComponent(query)}`);
+      console.log("CreatePostScreen: Users found:", users);
+      setSearchedUsers(users);
     } catch (error) {
       console.error("CreatePostScreen: Error searching users:", error);
     } finally {
@@ -340,8 +319,12 @@ export default function CreatePostScreen() {
           type: type,
         } as any);
 
-        const uploadResponse = await authenticatedFetch(`${BACKEND_URL}/api/posts/media`, {
+        const token = await getBearerToken();
+        const uploadResponse = await fetch(`${BACKEND_URL}/api/posts/media`, {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         });
 
@@ -363,25 +346,15 @@ export default function CreatePostScreen() {
         taggedUserIds: taggedUsers.map((u) => u.id),
       };
 
-      const endpoint = draftId
-        ? `${BACKEND_URL}/api/posts/drafts/${draftId}`
-        : `${BACKEND_URL}/api/posts/drafts`;
-      const method = draftId ? "PUT" : "POST";
-
       console.log("CreatePostScreen: Saving draft:", draftData);
-      const response = await authenticatedFetch(endpoint, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(draftData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save draft");
+      
+      let draft;
+      if (draftId) {
+        draft = await authenticatedPut(`/api/posts/drafts/${draftId}`, draftData);
+      } else {
+        draft = await authenticatedPost('/api/posts/drafts', draftData);
       }
-
-      const draft = await response.json();
+      
       console.log("CreatePostScreen: Draft saved successfully:", draft);
 
       Alert.alert("Success", "Your draft has been saved!", [
@@ -432,8 +405,12 @@ export default function CreatePostScreen() {
           type: type,
         } as any);
 
-        const uploadResponse = await authenticatedFetch(`${BACKEND_URL}/api/posts/media`, {
+        const token = await getBearerToken();
+        const uploadResponse = await fetch(`${BACKEND_URL}/api/posts/media`, {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         });
 
@@ -460,26 +437,12 @@ export default function CreatePostScreen() {
       };
 
       console.log("CreatePostScreen: Creating post with data:", postData);
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/posts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(postData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create post");
-      }
-
-      const post = await response.json();
+      const post = await authenticatedPost('/api/posts', postData);
       console.log("CreatePostScreen: Post created successfully:", post);
 
       // If this was a draft, delete it
       if (draftId) {
-        await authenticatedFetch(`${BACKEND_URL}/api/posts/drafts/${draftId}`, {
-          method: "DELETE",
-        });
+        await authenticatedDelete(`/api/posts/drafts/${draftId}`);
       }
 
       Alert.alert("Success", "Your post has been created!", [

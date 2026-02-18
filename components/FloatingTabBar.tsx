@@ -22,11 +22,9 @@ import Animated, {
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Href } from 'expo-router';
 import { colors } from '@/styles/commonStyles';
-import { authenticatedFetch } from '@/utils/api';
-import Constants from 'expo-constants';
+import { authenticatedGet } from '@/utils/api';
 
 const { width: screenWidth } = Dimensions.get('window');
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'https://s5h67befddk3ypbuyxdfdzua87su4asz.app.specular.dev';
 
 export interface TabBarItem {
   name: string;
@@ -115,14 +113,7 @@ export default function FloatingTabBar({
 
   const loadUnreadCount = async () => {
     try {
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/notifications/unread-count`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.log('FloatingTabBar: Unread count API returned error status:', response.status, errorText);
-        setUnreadCount(0);
-        return;
-      }
-      const data = await response.json();
+      const data = await authenticatedGet<{ count: number }>('/api/notifications/unread-count');
       console.log('FloatingTabBar: Unread notification count:', data.count);
       setUnreadCount(data.count || 0);
     } catch (error) {
@@ -134,8 +125,6 @@ export default function FloatingTabBar({
   const handleTabPress = (route: Href) => {
     router.push(route);
   };
-
-  // Remove unnecessary tabBarStyle animation to prevent flickering
 
   const tabWidthPercent = ((100 / tabs.length) - 1).toFixed(2);
 
