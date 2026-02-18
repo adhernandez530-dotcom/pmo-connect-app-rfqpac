@@ -21,6 +21,7 @@ import * as Location from "expo-location";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { authenticatedFetch, BACKEND_URL } from "@/utils/api";
+import { validateContent } from "@/utils/contentModeration";
 
 interface Service {
   id: string;
@@ -311,6 +312,14 @@ export default function CreatePostScreen() {
       return;
     }
 
+    // Validate content for inappropriate language
+    const validation = validateContent(content);
+    if (!validation.isValid) {
+      console.log("CreatePostScreen: Content moderation failed for draft");
+      Alert.alert("Inappropriate Content", validation.errorMessage);
+      return;
+    }
+
     console.log("CreatePostScreen: User tapped save draft");
     setIsSubmitting(true);
 
@@ -392,6 +401,14 @@ export default function CreatePostScreen() {
   const handleSubmit = async () => {
     if (!content.trim() && !selectedMedia) {
       Alert.alert("Error", "Please add some content or media to your post");
+      return;
+    }
+
+    // Validate content for inappropriate language
+    const validation = validateContent(content);
+    if (!validation.isValid) {
+      console.log("CreatePostScreen: Content moderation failed");
+      Alert.alert("Inappropriate Content", validation.errorMessage);
       return;
     }
 

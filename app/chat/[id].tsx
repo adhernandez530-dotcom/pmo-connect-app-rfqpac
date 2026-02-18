@@ -19,6 +19,7 @@ import Constants from "expo-constants";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { authenticatedFetch } from "@/utils/api";
+import { validateContent } from "@/utils/contentModeration";
 
 const BACKEND_URL =
   Constants.expoConfig?.extra?.backendUrl ||
@@ -172,6 +173,14 @@ export default function ChatScreen() {
     const trimmedMessage = messageText.trim();
     if (!trimmedMessage) {
       console.log("ChatScreen: Empty message, not sending");
+      return;
+    }
+
+    // Validate content for inappropriate language
+    const validation = validateContent(trimmedMessage);
+    if (!validation.isValid) {
+      console.log("ChatScreen: Content moderation failed");
+      Alert.alert("Inappropriate Content", validation.errorMessage);
       return;
     }
 
