@@ -1,6 +1,6 @@
 
 import { Stack } from "expo-router";
-import { FirebaseAuthProvider } from "@/contexts/FirebaseAuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
@@ -10,15 +10,12 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <FirebaseAuthProvider>
+    <AuthProvider>
       <Stack
         screenOptions={{
           headerShown: false,
         }}
       >
-        <Stack.Screen name="firebase-auth" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
         <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
@@ -26,6 +23,8 @@ export default function RootLayout() {
         <Stack.Screen name="email-signup" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
         <Stack.Screen name="edit-profile" options={{ title: "Edit Profile" }} />
         <Stack.Screen name="create-post" options={{ title: "Create Post" }} />
@@ -41,6 +40,6 @@ export default function RootLayout() {
         <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
-    </FirebaseAuthProvider>
+    </AuthProvider>
   );
 }

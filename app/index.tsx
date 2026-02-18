@@ -1,12 +1,12 @@
 
 import { useEffect } from 'react';
 import { Redirect } from 'expo-router';
-import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 import { colors } from '@/styles/commonStyles';
 
 export default function Index() {
-  const { user, loading } = useFirebaseAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     console.log('[Index] User state:', user ? 'authenticated' : 'not authenticated');
@@ -26,6 +26,6 @@ export default function Index() {
     return <Redirect href="/(tabs)/(home)" />;
   }
 
-  console.log('[Index] User not authenticated, redirecting to firebase-auth');
-  return <Redirect href="/firebase-auth" />;
+  console.log('[Index] User not authenticated, redirecting to auth');
+  return <Redirect href="/auth" />;
 }
