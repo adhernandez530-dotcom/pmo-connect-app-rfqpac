@@ -7,6 +7,7 @@ import { IconSymbol } from "@/components/IconSymbol";
 import { Toast } from "@/components/Toast";
 import * as ImagePicker from 'expo-image-picker';
 import { authenticatedGet, authenticatedPut, authenticatedDelete, authenticatedPost, authenticatedFetch, BACKEND_URL } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
   if (!source) return { uri: '' };
@@ -34,6 +35,7 @@ interface Knowledge {
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const { fetchUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -322,13 +324,17 @@ export default function EditProfileScreen() {
       const data = await authenticatedPut('/api/users/me', updateData);
       console.log('EditProfileScreen: Profile updated successfully', data);
       
+      // Refresh user data in AuthContext
+      console.log('EditProfileScreen: Refreshing user data in AuthContext');
+      await fetchUser();
+      
       setToastMessage('Profile updated successfully!');
       setShowToast(true);
       
       setTimeout(() => {
-        console.log('EditProfileScreen: Navigating back after successful save');
+        console.log('EditProfileScreen: Navigating to home page after successful save');
         setShowToast(false);
-        router.back();
+        router.push('/(tabs)/(home)');
       }, 1500);
     } catch (error) {
       console.error('EditProfileScreen: Error updating profile:', error);
