@@ -15,12 +15,13 @@ import {
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
-import { authenticatedPost, apiGet } from "@/utils/api";
+import { authenticatedPost, authenticatedPut, authenticatedGet } from "@/utils/api";
 import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as Contacts from "expo-contacts";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
+import { useAuth } from "@/contexts/AuthContext";
 
 type PermissionStatus = 'granted' | 'denied' | 'undetermined';
 
@@ -35,6 +36,7 @@ interface PermissionState {
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { fetchUser } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -83,7 +85,6 @@ export default function OnboardingScreen() {
     setLoadingProfile(true);
     
     try {
-      const { authenticatedGet } = await import("@/utils/api");
       const response = await authenticatedGet("/api/profile");
       
       console.log("Onboarding: Profile check response:", response);
@@ -130,7 +131,7 @@ export default function OnboardingScreen() {
     setUsernameError("");
 
     try {
-      const response = await apiGet(
+      const response = await authenticatedGet(
         `/api/onboarding/check-username/${usernameToCheck}`
       );
 
@@ -441,7 +442,6 @@ export default function OnboardingScreen() {
       // If user has existing profile from OAuth, update it instead of creating new
       if (hasExistingProfile) {
         console.log("Onboarding: Updating existing OAuth profile");
-        const { authenticatedPut } = await import("@/utils/api");
         await authenticatedPut(`/api/profile`, onboardingData);
       } else {
         console.log("Onboarding: Creating new profile");
@@ -449,6 +449,10 @@ export default function OnboardingScreen() {
       }
 
       console.log("Onboarding: Profile setup completed successfully");
+      
+      // Refresh user data in AuthContext to get updated profile
+      console.log("Onboarding: Refreshing user data in AuthContext");
+      await fetchUser();
       
       // Show success message
       const successMsg = hasExistingProfile 
@@ -460,7 +464,7 @@ export default function OnboardingScreen() {
       // Navigate after a short delay
       setTimeout(() => {
         console.log("Onboarding: Navigating to home after successful onboarding");
-        router.replace("/(tabs)");
+        router.replace("/(tabs)/(home)");
       }, 1500);
     } catch (error: any) {
       console.error("Onboarding: Error completing onboarding:", error);
