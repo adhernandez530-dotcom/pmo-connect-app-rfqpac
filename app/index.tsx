@@ -10,6 +10,7 @@ export default function Index() {
 
   useEffect(() => {
     console.log('[Index] User state:', user ? 'authenticated' : 'not authenticated');
+    console.log('[Index] Navigating to home page');
   }, [user]);
 
   if (loading) {

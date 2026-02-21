@@ -5,6 +5,7 @@
 // Declare __DEV__ global (React Native global for development mode detection)
 declare const __DEV__: boolean;
 
+// Import statements at the top
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
