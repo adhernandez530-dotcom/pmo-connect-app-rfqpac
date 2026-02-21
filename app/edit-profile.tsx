@@ -6,7 +6,7 @@ import { colors } from "@/styles/commonStyles";
 import { IconSymbol } from "@/components/IconSymbol";
 import { Toast } from "@/components/Toast";
 import * as ImagePicker from 'expo-image-picker';
-import { authenticatedGet, authenticatedPut, authenticatedDelete, authenticatedFetch, BACKEND_URL } from "@/utils/api";
+import { authenticatedGet, authenticatedPut, authenticatedDelete, authenticatedPost, authenticatedFetch, BACKEND_URL } from "@/utils/api";
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
   if (!source) return { uri: '' };
@@ -158,12 +158,9 @@ export default function EditProfileScreen() {
 
     console.log('EditProfileScreen: Adding service:', newService.trim());
     try {
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/services`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceName: newService.trim() })
+      const data = await authenticatedPost('/api/profile/services', {
+        serviceName: newService.trim()
       });
-      const data = await response.json();
       console.log('EditProfileScreen: Service added successfully', data);
       setServices([...services, data]);
       setNewService('');
@@ -210,12 +207,9 @@ export default function EditProfileScreen() {
 
     console.log('EditProfileScreen: Adding knowledge topic:', newKnowledge.trim());
     try {
-      const response = await authenticatedFetch(`${BACKEND_URL}/api/profile/knowledge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: newKnowledge.trim() })
+      const data = await authenticatedPost('/api/profile/knowledge', {
+        topic: newKnowledge.trim()
       });
-      const data = await response.json();
       console.log('EditProfileScreen: Knowledge topic added successfully', data);
       setKnowledge([...knowledge, data]);
       setNewKnowledge('');
@@ -293,10 +287,6 @@ export default function EditProfileScreen() {
             body: formData,
           });
           
-          if (!uploadResponse.ok) {
-            throw new Error(`Upload failed with status ${uploadResponse.status}`);
-          }
-
           const uploadData = await uploadResponse.json();
           console.log('EditProfileScreen: Avatar uploaded successfully', uploadData);
           

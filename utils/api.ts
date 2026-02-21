@@ -1,3 +1,4 @@
+
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -232,4 +233,48 @@ export const authenticatedDelete = async <T = any>(endpoint: string, data: any =
     method: "DELETE",
     body: JSON.stringify(data),
   });
+};
+
+/**
+ * Raw authenticated fetch for multipart/form-data uploads
+ * Does NOT set Content-Type header (browser sets it automatically with boundary)
+ * Use this for file uploads with FormData
+ *
+ * @param url - Full URL (including BACKEND_URL)
+ * @param options - Fetch options (method, body, etc.)
+ * @returns Raw fetch Response object
+ * @throws Error if token not found or request fails
+ */
+export const authenticatedFetch = async (
+  url: string,
+  options?: RequestInit
+): Promise<Response> => {
+  const token = await getBearerToken();
+
+  if (!token) {
+    throw new Error("Authentication token not found. Please sign in.");
+  }
+
+  console.log("[API] Authenticated fetch:", url, options?.method || "GET");
+
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers: {
+      ...options?.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  // Don't set Content-Type for FormData - browser will set it with boundary
+  console.log("[API] Fetch options (raw):", fetchOptions);
+
+  const response = await fetch(url, fetchOptions);
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("[API] Error response:", response.status, text);
+    throw new Error(`API error: ${response.status} - ${text}`);
+  }
+
+  return response;
 };
