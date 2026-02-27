@@ -22,6 +22,9 @@ import * as Contacts from "expo-contacts";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { useAuth } from "@/contexts/AuthContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ONBOARDING_COMPLETE_KEY = '@onboarding_complete';
 
 type PermissionStatus = 'granted' | 'denied' | 'undetermined';
 
@@ -85,9 +88,27 @@ export default function OnboardingScreen() {
     setLoadingProfile(true);
     
     try {
-      const response = await authenticatedGet("/api/profile");
+      const response = await authenticatedGet<{
+        id?: string;
+        username?: string | null;
+        fullName?: string | null;
+        location?: string | null;
+        bio?: string | null;
+        phoneNumber?: string | null;
+        onboardingComplete?: boolean;
+      }>("/api/profile");
       
       console.log("Onboarding: Profile check response:", response);
+      
+      // Check if onboarding is already complete using the new onboardingComplete field
+      const isOnboardingComplete = response?.onboardingComplete ?? (!!response?.username);
+      
+      if (isOnboardingComplete) {
+        // User has already completed onboarding - redirect to home immediately
+        console.log("Onboarding: User has already completed onboarding, redirecting to home");
+        router.replace("/(tabs)/(home)");
+        return;
+      }
       
       if (response && response.username) {
         console.log("Onboarding: User already has profile with username:", response.username);
@@ -449,6 +470,10 @@ export default function OnboardingScreen() {
       }
 
       console.log("Onboarding: Profile setup completed successfully");
+      
+      // Mark onboarding as complete in AsyncStorage
+      console.log("Onboarding: Marking onboarding as complete in AsyncStorage");
+      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
       
       // Refresh user data in AuthContext to get updated profile
       console.log("Onboarding: Refreshing user data in AuthContext");
