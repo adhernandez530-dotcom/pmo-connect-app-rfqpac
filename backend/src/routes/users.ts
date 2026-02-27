@@ -13,7 +13,7 @@ export function registerUserRoutes(app: App) {
 
   /**
    * GET /api/users/me
-   * Returns current user profile
+   * Returns current user profile with onboarding status
    */
   app.fastify.get('/api/users/me', async (request: FastifyRequest, reply: FastifyReply) => {
     const session = await requireAuth(request, reply);
@@ -32,7 +32,14 @@ export function registerUserRoutes(app: App) {
       }
 
       app.logger.info({ userId: session.user.id }, 'User profile retrieved successfully');
-      return userProfile;
+
+      // Add onboardingComplete flag based on whether username is set
+      const response = {
+        ...userProfile,
+        onboardingComplete: userProfile.username !== null,
+      };
+
+      return response;
     } catch (error) {
       app.logger.error({ err: error, userId: session.user.id }, 'Failed to fetch user profile');
       throw error;
@@ -86,7 +93,7 @@ export function registerUserRoutes(app: App) {
 
   /**
    * GET /api/users/:id
-   * Get user profile by ID
+   * Get user profile by ID with onboarding status
    */
   app.fastify.get('/api/users/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -104,7 +111,14 @@ export function registerUserRoutes(app: App) {
       }
 
       app.logger.info({ userId: id }, 'User profile retrieved successfully');
-      return userProfile;
+
+      // Add onboardingComplete flag based on whether username is set
+      const response = {
+        ...userProfile,
+        onboardingComplete: userProfile.username !== null,
+      };
+
+      return response;
     } catch (error) {
       app.logger.error({ err: error, userId: id }, 'Failed to fetch user profile');
       throw error;
